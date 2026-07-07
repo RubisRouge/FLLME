@@ -8,6 +8,7 @@ class ContentType(StrEnum):
 	MEDIA = "media"
 	TOOL_CALL = "tool_call"
 	TOOL_RESPONSE = "tool_response"
+	THINKING = "thinking"
 	ERROR = "error"
 
 class SourceType(StrEnum) : 
@@ -51,11 +52,16 @@ class ToolResponseContent(BaseModel):
 	content: str
 	is_error: bool = False
 
+class ThinkingContent(BaseModel):
+	type : ContentType = ContentType.THINKING
+	thinking : str
+	signature : str | None = None
+
 class ErrorContent(BaseModel):
 	type: ContentType = ContentType.ERROR
 	message: str
 
-Content = TextContent | MediaContent | ToolCallContent | ToolResponseContent | ErrorContent
+Content = TextContent | MediaContent | ToolCallContent | ToolResponseContent | ThinkingContent | ErrorContent
 
 
 class MessageSource(StrEnum):
