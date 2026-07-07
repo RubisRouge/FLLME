@@ -6,4 +6,5 @@ __pycache__/
 .claude
 .serena
 .venv
+CLAUDE.md
 wip/
