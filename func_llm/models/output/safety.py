@@ -21,13 +21,13 @@ class SafetySeverity(StrEnum):
 
 
 class SafetyRating(BaseModel):
-    category : SafetyCategory
-    severity : SafetySeverity = SafetySeverity.SAFE
-    filtered : bool = False
+    category: SafetyCategory
+    severity: SafetySeverity = SafetySeverity.SAFE
+    filtered: bool = False
 
 
 class SafetyResult(BaseModel):
-    ratings : list[SafetyRating] = []
-    blocked : bool = False
-    refusal_message : str | None = None
-    refusal_category : str | None = None
+    ratings: list[SafetyRating] = []
+    blocked: bool = False
+    refusal_message: str | None = None
+    refusal_category: str | None = None

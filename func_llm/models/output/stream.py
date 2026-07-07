@@ -8,13 +8,13 @@ class StreamEventType(StrEnum):
 
 
 class TextDelta(BaseModel):
-    type : StreamEventType = StreamEventType.TEXT_DELTA
-    text : str
+    type: StreamEventType = StreamEventType.TEXT_DELTA
+    text: str
 
 
 class ThinkingDelta(BaseModel):
-    type : StreamEventType = StreamEventType.THINKING_DELTA
-    thinking : str
+    type: StreamEventType = StreamEventType.THINKING_DELTA
+    thinking: str
 
 
 StreamDelta = TextDelta | ThinkingDelta

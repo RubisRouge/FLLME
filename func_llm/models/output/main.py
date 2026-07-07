@@ -16,11 +16,11 @@ class FinishReason(StrEnum):
 
 
 class GenerationOutput(BaseModel):
-    id : str
-    model : str
-    message : Message
-    finish_reason : FinishReason
-    usage : Usage
-    citations : list[Citation] = []
-    safety : SafetyResult | None = None
-    created : int | None = None
+    id: str
+    model: str
+    message: Message
+    finish_reason: FinishReason
+    usage: Usage
+    citations: list[Citation] = []
+    safety: SafetyResult | None = None
+    created: int | None = None
