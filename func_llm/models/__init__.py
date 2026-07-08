@@ -30,7 +30,9 @@ from .input import (
     ToolsCallingMode,
     ToolsConfig,
 )
-from .config import CloudConfig, FuncLLMSettings
+from .auth import AuthPrinciple
+from .deployment import AdapterType, Deployment
+from .model import LLMModel
 from .output import (
     CacheUsage,
     Citation,
@@ -50,21 +52,23 @@ from .output import (
 )
 
 __all__ = [
+    "AdapterType",
+    "AuthPrinciple",
     "Base64Source",
     "BasicOutputType",
     "CacheUsage",
     "Citation",
-    "CloudConfig",
     "CitationType",
     "Content",
     "ContentType",
+    "Deployment",
     "ErrorContent",
     "FinishReason",
-    "FuncLLMSettings",
     "GenerationInput",
     "GenerationOutput",
     "ImageConfig",
     "LLMConfig",
+    "LLMModel",
     "MediaContent",
     "MediaSource",
     "Message",
