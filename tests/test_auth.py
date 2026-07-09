@@ -121,6 +121,7 @@ class TestGoogleADCResolver:
 
         mock_creds = MagicMock()
         mock_creds.token = "fake-token-123"
+        mock_creds.valid = False
 
         with patch("func_llm.auth.google_adc.asyncio.to_thread") as mock_to_thread:
             mock_to_thread.side_effect = [
@@ -130,6 +131,65 @@ class TestGoogleADCResolver:
             headers = await resolver.get_headers(principle)
 
         assert headers == {"Authorization": "Bearer fake-token-123"}
+
+    @pytest.mark.asyncio
+    async def test_cached_credentials_skip_default(self) -> None:
+        resolver = GoogleADCResolver()
+        principle = AuthPrinciple(
+            id="google_adc",
+            name="Google ADC",
+            resolver_id="google_adc",
+        )
+
+        mock_creds = MagicMock()
+        mock_creds.token = "token-1"
+        mock_creds.valid = False
+
+        with patch("func_llm.auth.google_adc.asyncio.to_thread") as mock_to_thread:
+            mock_to_thread.side_effect = [
+                (mock_creds, "project-id"),
+                None,
+            ]
+            await resolver.get_headers(principle)
+
+        mock_creds.valid = True
+        mock_creds.token = "token-1"
+
+        with patch("func_llm.auth.google_adc.asyncio.to_thread") as mock_to_thread:
+            headers = await resolver.get_headers(principle)
+
+        assert headers == {"Authorization": "Bearer token-1"}
+        mock_to_thread.assert_not_called()
+
+    @pytest.mark.asyncio
+    async def test_refresh_when_expired(self) -> None:
+        resolver = GoogleADCResolver()
+        principle = AuthPrinciple(
+            id="google_adc",
+            name="Google ADC",
+            resolver_id="google_adc",
+        )
+
+        mock_creds = MagicMock()
+        mock_creds.token = "token-1"
+        mock_creds.valid = False
+
+        with patch("func_llm.auth.google_adc.asyncio.to_thread") as mock_to_thread:
+            mock_to_thread.side_effect = [
+                (mock_creds, "project-id"),
+                None,
+            ]
+            await resolver.get_headers(principle)
+
+        mock_creds.valid = False
+        mock_creds.token = "token-2"
+
+        with patch("func_llm.auth.google_adc.asyncio.to_thread") as mock_to_thread:
+            mock_to_thread.return_value = None
+            headers = await resolver.get_headers(principle)
+
+        assert headers == {"Authorization": "Bearer token-2"}
+        mock_to_thread.assert_called_once()
 
     def test_check_env(self) -> None:
         resolver = GoogleADCResolver()
