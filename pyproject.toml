@@ -12,8 +12,9 @@ dependencies = [
     "requests>=2.32.4",
 ]
 
-[tool.setuptools.packages.find]
-include = ["func_llm*"]
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
 
 [dependency-groups]
 dev = [

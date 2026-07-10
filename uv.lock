@@ -302,8 +302,8 @@ wheels = [
 
 [[package]]
 name = "func-llm"
-version = "0.0.1"
-source = { virtual = "." }
+version = "0.1.0"
+source = { editable = "." }
 dependencies = [
     { name = "aiosqlite" },
     { name = "google-auth" },
