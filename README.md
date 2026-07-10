@@ -16,7 +16,11 @@ async def main():
     func_llm.configure(service)
 
     # 2. Register a model and its deployment
-    await service.add_model(func_llm.LLMModel(id="claude-sonnet-4", name="Claude Sonnet 4"))
+    await service.add_model(func_llm.LLMModel(
+        id="claude-sonnet-4",
+        name="Claude Sonnet 4",
+        provider=func_llm.Provider.ANTHROPIC,
+    ))
     await service.add_deployment(func_llm.Deployment(
         id="claude-vertex-euw1",
         url="https://europe-west1-aiplatform.googleapis.com/v1/projects/my-project/...",
@@ -28,7 +32,7 @@ async def main():
     # 3. Generate
     gen_input = func_llm.GenerationInput(
         model="claude-sonnet-4",
-        conversation=[func_llm.Message(role="user", contents=[...])],
+        conversation=[func_llm.Message(source="user", contents=[...])],
     )
     output = await func_llm.generate(gen_input)
 
@@ -58,8 +62,16 @@ func_llm/
     deployment.py         # AdapterType enum, Deployment (url, model_id, adapter, auth_id)
     auth.py               # AuthPrinciple, built-in principles (google_adc, api_key)
     message.py            # Message, Content blocks (text, media, tool calls, thinking, errors)
-    input/                # GenerationInput, LLMConfig, ToolsConfig, ImageConfig
-    output/               # GenerationOutput, Usage, Citation, SafetyResult, StreamDelta
+    input/
+      main.py             # ThinkingLevel, LLMConfig, BasicOutputType, GenerationInput
+      tools.py            # ToolsCallingMode, Tool, ToolsConfig
+      image.py            # Ratio, Resolution, PersonGeneration, MimeType, ImageConfig
+    output/
+      main.py             # FinishReason, GenerationOutput
+      usage.py            # CacheUsage, Usage
+      citation.py         # CitationType, TextSpan, Citation
+      safety.py           # SafetyCategory, SafetySeverity, SafetyRating, SafetyResult
+      stream.py           # StreamEventType, TextDelta, ThinkingDelta, StreamDelta
   auth/
     protocol.py           # AuthResolver protocol
     google_adc.py         # Google ADC resolver (asyncio.to_thread wrapping google.auth)
@@ -69,11 +81,11 @@ func_llm/
       protocol.py         # ModelRepository, DeploymentRepository, AuthRepository protocols
       sqlite.py           # SQLiteStore — default async SQLite implementation
   providers/
-    base.py               # Adapter protocol (serialize, deserialize, parse_stream)
-    anthropic_vertex_v1.py
-    gemini_vertex_v1.py
-    mistral_vertex_v1.py
-    openai_azure_v1.py
+    base.py               # Adapter protocol (serialize, parse_stream)
+    anthropic/vertex_v1.py
+    gemini/vertex_v1.py
+    mistral/vertex_v1.py
+    openai/azure_v1.py
   service.py              # DeploymentService — composes repos + auth resolution
   generate.py             # configure(), generate() — main entry point
   media.py                # MediaResolver protocol, resolve_references(), store_media()
@@ -85,10 +97,10 @@ func_llm/
 
 ### LLMModel
 
-Simple identity — just an ID and a display name:
+Simple identity — an ID, a display name, and the provider:
 
 ```python
-LLMModel(id="claude-sonnet-4", name="Claude Sonnet 4")
+LLMModel(id="claude-sonnet-4", name="Claude Sonnet 4", provider=Provider.ANTHROPIC)
 ```
 
 ### Deployment
@@ -128,7 +140,7 @@ Built-in principles (`google_adc`, `api_key`) are pre-seeded in the default SQLi
 `GenerationInput` is the unified request object. It carries:
 
 - **model** — model ID string (resolved to a `Deployment` by `DeploymentService`)
-- **conversation** — list of `Message` with typed content blocks (text, media, tool calls, tool responses, thinking, errors)
+- **conversation** — list of `Message` with typed content blocks (text, media, tool calls, tool responses, thinking, errors). Each message has a `source` field (`user | model | system | tool`)
 - **llm_config** — generation parameters (temperature, top_p, top_k, max_tokens, stop sequences, thinking level)
 - **tool_config** — function calling tools, mode (auto/any/none), parallel calling
 - **image_config** — image generation settings (ratio, resolution, person generation, mime type)
@@ -224,7 +236,7 @@ func_llm.register_resolver("my_oauth", MyOAuthResolver())
 
 ## Adapters
 
-Each provider/cloud/version combination has its own adapter implementing the `Adapter` protocol (`serialize`, `deserialize`, `parse_stream`, `get_stream_url`).
+Each provider/cloud/version combination has its own adapter implementing the `Adapter` protocol (`serialize`, `parse_stream`).
 
 | AdapterType | Provider | Cloud |
 |---|---|---|
@@ -238,8 +250,8 @@ New API versions get new enum values (e.g., `anthropic_vertex_v2`). Adapters are
 ## Requirements
 
 - Python >= 3.13
-- pydantic >= 2
-- httpx
-- aiosqlite
-- google-auth
-- requests
+- pydantic >= 2.13
+- httpx >= 0.28
+- aiosqlite >= 0.20
+- google-auth >= 2.55
+- requests >= 2.32
