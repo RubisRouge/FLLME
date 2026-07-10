@@ -114,7 +114,7 @@ def _serialize_model_messages(msg: Message) -> list[dict[str, Any]]:
 
 class MistralVertexV1:
     def serialize(self, gen_input: GenerationInput) -> dict[str, Any]:
-        payload: dict[str, Any] = {}
+        payload: dict[str, Any] = {"model": gen_input.model}
 
         messages: list[dict[str, Any]] = []
 
