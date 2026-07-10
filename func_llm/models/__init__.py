@@ -32,7 +32,7 @@ from .input import (
 )
 from .auth import AuthPrinciple
 from .deployment import AdapterType, Deployment
-from .model import LLMModel
+from .model import LLMModel, Provider
 from .output import (
     CacheUsage,
     Citation,
@@ -76,6 +76,7 @@ __all__ = [
     "MimeType",
     "OutputType",
     "PersonGeneration",
+    "Provider",
     "Ratio",
     "ReferenceSource",
     "Resolution",

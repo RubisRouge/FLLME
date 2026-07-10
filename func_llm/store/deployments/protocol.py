@@ -4,13 +4,15 @@ from typing import Protocol
 
 from ...models.auth import AuthPrinciple
 from ...models.deployment import Deployment
-from ...models.model import LLMModel
+from ...models.model import LLMModel, Provider
 
 
 class ModelRepository(Protocol):
     async def add(self, model: LLMModel) -> None: ...
 
     async def get(self, model_id: str) -> LLMModel: ...
+
+    async def get_for_provider(self, provider: Provider) -> list[LLMModel]: ...
 
     async def list(self) -> list[LLMModel]: ...
 

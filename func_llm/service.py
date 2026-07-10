@@ -7,7 +7,7 @@ from .auth import get_resolver
 from .errors import DeploymentNotFoundError
 from .models.auth import AuthPrinciple
 from .models.deployment import Deployment
-from .models.model import LLMModel
+from .models.model import LLMModel, Provider
 from .store import AuthRepository, DeploymentRepository, ModelRepository, SQLiteStore
 
 logger = logging.getLogger(__name__)
@@ -45,6 +45,9 @@ class DeploymentService:
     async def list_models(self) -> list[LLMModel]:
         return await self._models.list()
 
+    async def list_models_for_provider(self, provider: Provider) -> list[LLMModel]:
+        return await self._models.get_for_provider(provider)
+
     async def remove_model(self, model_id: str) -> None:
         await self._models.remove(model_id)
 
@@ -69,6 +72,9 @@ class DeploymentService:
 
     async def get_deployment(self, deployment_id: str) -> Deployment:
         return await self._deployments.get(deployment_id)
+
+    async def get_deployment_for_model(self, model_id: str) -> list[Deployment]:
+        return await self._deployments.get_for_model(model_id)
 
     async def resolve_deployment(
         self,

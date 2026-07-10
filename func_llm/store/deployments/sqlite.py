@@ -9,14 +9,15 @@ import aiosqlite
 from ...errors import AuthError, DeploymentNotFoundError, ModelNotFoundError
 from ...models.auth import BUILTIN_PRINCIPLES, AuthPrinciple
 from ...models.deployment import AdapterType, Deployment
-from ...models.model import LLMModel
+from ...models.model import LLMModel, Provider
 
 logger = logging.getLogger(__name__)
 
 SCHEMA = """
 CREATE TABLE IF NOT EXISTS models (
-    id   TEXT PRIMARY KEY,
-    name TEXT NOT NULL
+    id       TEXT PRIMARY KEY,
+    name     TEXT NOT NULL,
+    provider TEXT NOT NULL
 );
 
 CREATE TABLE IF NOT EXISTS auth_principles (
@@ -43,26 +44,34 @@ class _SQLiteModelRepository:
 
     async def add(self, model: LLMModel) -> None:
         await self._db.execute(
-            "INSERT OR REPLACE INTO models (id, name) VALUES (?, ?)",
-            (model.id, model.name),
+            "INSERT OR REPLACE INTO models (id, name, provider) VALUES (?, ?, ?)",
+            (model.id, model.name, model.provider.value),
         )
         await self._db.commit()
 
     async def get(self, model_id: str) -> LLMModel:
         cursor = await self._db.execute(
-            "SELECT id, name FROM models WHERE id = ?",
+            "SELECT id, name, provider FROM models WHERE id = ?",
             (model_id,),
         )
         row = await cursor.fetchone()
         if row is None:
             msg = f"Model {model_id!r} not found"
             raise ModelNotFoundError(msg)
-        return LLMModel(id=row[0], name=row[1])
+        return LLMModel(id=row[0], name=row[1], provider=Provider(row[2]))
+
+    async def get_for_provider(self, provider: Provider) -> list[LLMModel]:
+        cursor = await self._db.execute(
+            "SELECT id, name, provider FROM models WHERE provider = ?",
+            (provider.value,),
+        )
+        rows = await cursor.fetchall()
+        return [LLMModel(id=r[0], name=r[1], provider=Provider(r[2])) for r in rows]
 
     async def list(self) -> list[LLMModel]:
-        cursor = await self._db.execute("SELECT id, name FROM models")
+        cursor = await self._db.execute("SELECT id, name, provider FROM models")
         rows = await cursor.fetchall()
-        return [LLMModel(id=r[0], name=r[1]) for r in rows]
+        return [LLMModel(id=r[0], name=r[1], provider=Provider(r[2])) for r in rows]
 
     async def remove(self, model_id: str) -> None:
         await self._db.execute(
