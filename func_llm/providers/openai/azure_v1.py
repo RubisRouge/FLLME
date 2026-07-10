@@ -7,6 +7,7 @@ from collections.abc import AsyncIterator
 from typing import Any
 
 from ...models.input import GenerationInput, ThinkingLevel, ToolsCallingMode
+from ..base import accumulate_content
 from ...models.message import (
     Base64Source,
     Content,
@@ -237,11 +238,11 @@ class OpenAIAzureV1:
 
                 if reasoning := delta.get("reasoning_content"):
                     yield ThinkingDelta(thinking=reasoning)
-                    accumulated.append(ThinkingContent(thinking=reasoning))
+                    accumulate_content(accumulated, ThinkingContent(thinking=reasoning))
 
                 if text := delta.get("content"):
                     yield TextDelta(text=text)
-                    accumulated.append(TextContent(text=text))
+                    accumulate_content(accumulated, TextContent(text=text))
 
                 for tc in delta.get("tool_calls", []):
                     idx = tc.get("index", 0)

@@ -6,6 +6,7 @@ from collections.abc import AsyncIterator
 from typing import Any
 
 from ...models.input import GenerationInput, ThinkingLevel, ToolsCallingMode
+from ..base import accumulate_content
 from ...models.message import (
     Base64Source,
     Content,
@@ -149,10 +150,10 @@ class GeminiVertexV1:
                 for part in candidate.get("content", {}).get("parts", []):
                     if part.get("thought") and (text := part.get("text")):
                         yield ThinkingDelta(thinking=text)
-                        accumulated.append(ThinkingContent(thinking=text))
+                        accumulate_content(accumulated, ThinkingContent(thinking=text))
                     elif text := part.get("text"):
                         yield TextDelta(text=text)
-                        accumulated.append(TextContent(text=text))
+                        accumulate_content(accumulated, TextContent(text=text))
                     elif fc := part.get("functionCall"):
                         has_tool_calls = True
                         accumulated.append(

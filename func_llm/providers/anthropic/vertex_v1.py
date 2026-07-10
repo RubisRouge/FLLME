@@ -7,6 +7,7 @@ from collections.abc import AsyncIterator
 from typing import Any
 
 from ...models.input import GenerationInput, ThinkingLevel, ToolsCallingMode
+from ..base import accumulate_content
 from ...models.message import (
     Base64Source,
     Content,
@@ -257,9 +258,7 @@ class AnthropicVertexV1:
                             thinking = delta.get("thinking", "")
                             if thinking:
                                 yield ThinkingDelta(thinking=thinking)
-                                accumulated.append(
-                                    ThinkingContent(thinking=thinking)
-                                )
+                                accumulate_content(accumulated, ThinkingContent(thinking=thinking))
                         case "signature_delta":
                             sig = delta.get("signature", "")
                             if sig and accumulated:
@@ -273,7 +272,7 @@ class AnthropicVertexV1:
                             text = delta.get("text", "")
                             if text:
                                 yield TextDelta(text=text)
-                                accumulated.append(TextContent(text=text))
+                                accumulate_content(accumulated, TextContent(text=text))
                         case "input_json_delta":
                             if tool_acc is not None:
                                 tool_acc.partial_json += delta.get(
