@@ -3,11 +3,11 @@ from collections.abc import AsyncGenerator
 import pytest
 import pytest_asyncio
 
-from fllm.errors import AuthError, DeploymentNotFoundError, ModelNotFoundError
-from fllm.models.auth import AuthPrinciple
-from fllm.models.deployment import AdapterType, Deployment
-from fllm.models.model import LLMModel, Provider
-from fllm.store.deployments import SQLiteStore
+from fllme.errors import AuthError, DeploymentNotFoundError, ModelNotFoundError
+from fllme.models.auth import AuthPrinciple
+from fllme.models.deployment import AdapterType, Deployment
+from fllme.models.model import LLMModel, Provider
+from fllme.store.deployments import SQLiteStore
 
 
 @pytest_asyncio.fixture

@@ -8,33 +8,33 @@ Provides a unified, provider-agnostic interface over **Anthropic**, **Gemini**, 
 
 ```python
 import asyncio
-import fllm
+import fllme
 
 async def main():
     # 1. Create the service (default SQLite backend)
-    service = await fllm.DeploymentService.from_sqlite("deployments.db")
-    fllm.configure(service)
+    service = await fllme.DeploymentService.from_sqlite("deployments.db")
+    fllme.configure(service)
 
     # 2. Register a model and its deployment
-    await service.add_model(fllm.LLMModel(
+    await service.add_model(fllme.LLMModel(
         id="claude-sonnet-4",
         name="Claude Sonnet 4",
-        provider=fllm.Provider.ANTHROPIC,
+        provider=fllme.Provider.ANTHROPIC,
     ))
-    await service.add_deployment(fllm.Deployment(
+    await service.add_deployment(fllme.Deployment(
         id="claude-vertex-euw1",
         url="https://europe-west1-aiplatform.googleapis.com/v1/projects/my-project/...",
         model_id="claude-sonnet-4",
-        adapter=fllm.AdapterType.ANTHROPIC_VERTEX_V1,
+        adapter=fllme.AdapterType.ANTHROPIC_VERTEX_V1,
         auth_id="google_adc",
     ))
 
     # 3. Generate
-    gen_input = fllm.GenerationInput(
+    gen_input = fllme.GenerationInput(
         model="claude-sonnet-4",
-        conversation=[fllm.Message(source="user", contents=[...])],
+        conversation=[fllme.Message(source="user", contents=[...])],
     )
-    output = await fllm.generate(gen_input)
+    output = await fllme.generate(gen_input)
 
 asyncio.run(main())
 ```
@@ -56,7 +56,7 @@ The flow: `GenerationInput` → `DeploymentService` resolves the deployment → 
 ## Project Structure
 
 ```
-fllm/
+fllme/
   models/
     model.py              # LLMModel (id, name)
     deployment.py         # AdapterType enum, Deployment (url, model_id, adapter, auth_id)
@@ -231,7 +231,7 @@ Built-in resolvers:
 Register custom resolvers:
 
 ```python
-fllm.register_resolver("my_oauth", MyOAuthResolver())
+fllme.register_resolver("my_oauth", MyOAuthResolver())
 ```
 
 ## Adapters

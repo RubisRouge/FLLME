@@ -1,9 +1,9 @@
 import pytest
 from pydantic import ValidationError
 
-from fllm.models.auth import BUILTIN_PRINCIPLES, AuthPrinciple
-from fllm.models.deployment import AdapterType, Deployment
-from fllm.models.model import LLMModel, Provider
+from fllme.models.auth import BUILTIN_PRINCIPLES, AuthPrinciple
+from fllme.models.deployment import AdapterType, Deployment
+from fllme.models.model import LLMModel, Provider
 
 
 class TestLLMModel:

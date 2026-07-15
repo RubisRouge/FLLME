@@ -1,5 +1,5 @@
 [project]
-name = "fllm"
+name = "fllme"
 version = "0.1.1"
 description = "A functionnal oriented Python CLI for LLM calling with multi provider and multi model"
 readme = "README.md"
@@ -22,7 +22,7 @@ build-backend = "hatchling.build"
 
 [dependency-groups]
 dev = [
-    "fllm",
+    "fllme",
     "google>=3.0.0",
     "marimo>=0.23.13",
     "mypy>=1.15",

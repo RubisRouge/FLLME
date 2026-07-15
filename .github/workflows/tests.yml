@@ -20,5 +20,5 @@ jobs:
       - run: pip install uv
       - run: uv sync
       - run: uv run ruff format --check
-      - run: uv run mypy --strict fllm/ tests/
+      - run: uv run mypy --strict fllme/ tests/
       - run: uv run pytest tests/

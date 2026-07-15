@@ -3,12 +3,12 @@ from typing import Any
 
 import pytest
 
-from fllm.generate import configure, get_service
-from fllm.service import DeploymentService
+from fllme.generate import configure, get_service
+from fllme.service import DeploymentService
 
 
 def _gen_mod() -> Any:
-    return importlib.import_module("fllm.generate")
+    return importlib.import_module("fllme.generate")
 
 
 class TestConfigureAndGetService:

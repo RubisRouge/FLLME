@@ -359,7 +359,7 @@ wheels = [
 ]
 
 [[package]]
-name = "fllm"
+name = "fllme"
 version = "0.1.1"
 source = { editable = "." }
 dependencies = [
@@ -372,7 +372,7 @@ dependencies = [
 
 [package.dev-dependencies]
 dev = [
-    { name = "fllm" },
+    { name = "fllme" },
     { name = "google" },
     { name = "marimo" },
     { name = "mypy" },
@@ -393,7 +393,7 @@ requires-dist = [
 
 [package.metadata.requires-dev]
 dev = [
-    { name = "fllm" },
+    { name = "fllme" },
     { name = "google", specifier = ">=3.0.0" },
     { name = "marimo", specifier = ">=0.23.13" },
     { name = "mypy", specifier = ">=1.15" },

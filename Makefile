@@ -1,4 +1,4 @@
-SRC   := fllm
+SRC   := fllme
 TESTS := tests
 
 release:
