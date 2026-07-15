@@ -19,5 +19,5 @@ jobs:
       - run: pip install uv
       - run: uv sync
       - run: uv run ruff format --check
-      - run: uv run mypy --strict pydantic_firebase_remoteconfig/ tests/
+      - run: uv run mypy --strict fflm/ tests/
       - run: uv run pytest tests/
