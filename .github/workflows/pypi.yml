@@ -1,0 +1,19 @@
+name: "Publish on PyPi"
+on:
+  push:
+    tags:
+      - "v[0-9]+.[0-9]+.[0-9]+"
+jobs:
+  publish:
+    environment: "pypi"
+    permissions:
+      id-token: write
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+    - uses: actions/setup-python@v5
+      with:
+        python-version: "3.13"
+    - run: pip install uv
+    - run: uv build
+    - run: uv publish

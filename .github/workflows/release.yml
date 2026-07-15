@@ -1,0 +1,27 @@
+name: "Release"
+on:
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  tests:
+    uses: ./.github/workflows/tests.yml
+  release:
+    environment: "release"
+    needs:
+      - tests
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v3
+      with:
+        token: ${{ secrets.RELEASE_ACCESS_TOKEN }}
+    - uses: actions/setup-python@v5
+      with:
+        python-version: "3.13"
+    - run: pip install uv
+    - id: readVersion
+      run: echo "value=$(uv version --short)" >> "$GITHUB_OUTPUT"
+    - run: git config --global user.name 'OPSIE.DEV'
+    - run: git config --global user.email "opsie-dev@users.noreply.github.com"
+    - run: git tag v${{ steps.readVersion.outputs.value }}
+    - run: git push origin v${{ steps.readVersion.outputs.value }}
