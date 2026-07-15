@@ -1,4 +1,4 @@
-SRC   := func_llm
+SRC   := fllm
 TESTS := tests
 
 release:

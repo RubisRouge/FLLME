@@ -3,8 +3,8 @@ from typing import Any
 
 import pytest
 
-from func_llm.generate import configure, get_service
-from func_llm.service import DeploymentService
+from fllm.generate import configure, get_service
+from fllm.service import DeploymentService
 
 
 def _gen_mod() -> Any:

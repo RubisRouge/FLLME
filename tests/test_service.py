@@ -4,12 +4,12 @@ from unittest.mock import patch
 import pytest
 import pytest_asyncio
 
-from func_llm.errors import DeploymentNotFoundError
-from func_llm.models.auth import AuthPrinciple
-from func_llm.models.deployment import AdapterType, Deployment
-from func_llm.models.model import LLMModel, Provider
-from func_llm.service import DeploymentService
-from func_llm.store.deployments.sqlite import SQLiteStore
+from fllm.errors import DeploymentNotFoundError
+from fllm.models.auth import AuthPrinciple
+from fllm.models.deployment import AdapterType, Deployment
+from fllm.models.model import LLMModel, Provider
+from fllm.service import DeploymentService
+from fllm.store.deployments.sqlite import SQLiteStore
 
 
 @pytest_asyncio.fixture

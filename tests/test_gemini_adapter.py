@@ -6,7 +6,7 @@ from typing import Any
 
 import pytest
 
-from func_llm.models.input import (
+from fllm.models.input import (
     GenerationInput,
     LLMConfig,
     ThinkingLevel,
@@ -14,7 +14,7 @@ from func_llm.models.input import (
     ToolsCallingMode,
     ToolsConfig,
 )
-from func_llm.models.message import (
+from fllm.models.message import (
     Base64Source,
     MediaContent,
     Message,
@@ -24,13 +24,13 @@ from func_llm.models.message import (
     ToolResponseContent,
     UrlSource,
 )
-from func_llm.models.output import (
+from fllm.models.output import (
     FinishReason,
     GenerationOutput,
     TextDelta,
     ThinkingDelta,
 )
-from func_llm.providers.gemini.vertex_v1 import GeminiVertexV1
+from fllm.providers.gemini.vertex_v1 import GeminiVertexV1
 
 
 def _simple_input(text: str = "Hello") -> GenerationInput:
