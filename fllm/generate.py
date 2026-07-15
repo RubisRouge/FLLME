@@ -22,7 +22,7 @@ def configure(service: DeploymentService) -> None:
 
 def get_service() -> DeploymentService:
     if DEFAULT_SERVICE is None:
-        msg = "No service configured. Call func_llm.configure(service) first."
+        msg = "No service configured. Call fllm.configure(service) first."
         raise RuntimeError(msg)
     return DEFAULT_SERVICE
 

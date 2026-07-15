@@ -7,5 +7,5 @@ __pycache__/
 .serena
 .venv
 CLAUDE.md
-func_llm.egg-info/
+fllm.egg-info/
 wip/

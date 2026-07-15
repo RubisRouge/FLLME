@@ -8,7 +8,7 @@ from fllm.service import DeploymentService
 
 
 def _gen_mod() -> Any:
-    return importlib.import_module("func_llm.generate")
+    return importlib.import_module("fllm.generate")
 
 
 class TestConfigureAndGetService:

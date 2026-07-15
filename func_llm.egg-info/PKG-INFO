@@ -1,3 +1,15 @@
+Metadata-Version: 2.4
+Name: func-llm
+Version: 0.0.1
+Summary: A functionnal oriented Python CLI for LLM calling with multi provider and multi model
+Requires-Python: >=3.13
+Description-Content-Type: text/markdown
+Requires-Dist: aiosqlite>=0.20.0
+Requires-Dist: google-auth>=2.55.1
+Requires-Dist: httpx>=0.28.1
+Requires-Dist: pydantic>=2.13.4
+Requires-Dist: requests>=2.32.4
+
 # Func-LLM
 
 A functional-oriented Python library for LLM calling with multi-provider and multi-model support.
@@ -8,33 +20,29 @@ Provides a unified, provider-agnostic interface over **Anthropic**, **Gemini**, 
 
 ```python
 import asyncio
-import fllm
+import func_llm
 
 async def main():
     # 1. Create the service (default SQLite backend)
-    service = await fllm.DeploymentService.from_sqlite("deployments.db")
-    fllm.configure(service)
+    service = await func_llm.DeploymentService.from_sqlite("deployments.db")
+    func_llm.configure(service)
 
     # 2. Register a model and its deployment
-    await service.add_model(fllm.LLMModel(
-        id="claude-sonnet-4",
-        name="Claude Sonnet 4",
-        provider=fllm.Provider.ANTHROPIC,
-    ))
-    await service.add_deployment(fllm.Deployment(
+    await service.add_model(func_llm.LLMModel(id="claude-sonnet-4", name="Claude Sonnet 4"))
+    await service.add_deployment(func_llm.Deployment(
         id="claude-vertex-euw1",
         url="https://europe-west1-aiplatform.googleapis.com/v1/projects/my-project/...",
         model_id="claude-sonnet-4",
-        adapter=fllm.AdapterType.ANTHROPIC_VERTEX_V1,
+        adapter=func_llm.AdapterType.ANTHROPIC_VERTEX_V1,
         auth_id="google_adc",
     ))
 
     # 3. Generate
-    gen_input = fllm.GenerationInput(
+    gen_input = func_llm.GenerationInput(
         model="claude-sonnet-4",
-        conversation=[fllm.Message(source="user", contents=[...])],
+        conversation=[func_llm.Message(role="user", contents=[...])],
     )
-    output = await fllm.generate(gen_input)
+    output = await func_llm.generate(gen_input)
 
 asyncio.run(main())
 ```
@@ -56,22 +64,14 @@ The flow: `GenerationInput` → `DeploymentService` resolves the deployment → 
 ## Project Structure
 
 ```
-fllm/
+func_llm/
   models/
     model.py              # LLMModel (id, name)
     deployment.py         # AdapterType enum, Deployment (url, model_id, adapter, auth_id)
     auth.py               # AuthPrinciple, built-in principles (google_adc, api_key)
     message.py            # Message, Content blocks (text, media, tool calls, thinking, errors)
-    input/
-      main.py             # ThinkingLevel, LLMConfig, BasicOutputType, GenerationInput
-      tools.py            # ToolsCallingMode, Tool, ToolsConfig
-      image.py            # Ratio, Resolution, PersonGeneration, MimeType, ImageConfig
-    output/
-      main.py             # FinishReason, GenerationOutput
-      usage.py            # CacheUsage, Usage
-      citation.py         # CitationType, TextSpan, Citation
-      safety.py           # SafetyCategory, SafetySeverity, SafetyRating, SafetyResult
-      stream.py           # StreamEventType, TextDelta, ThinkingDelta, StreamDelta
+    input/                # GenerationInput, LLMConfig, ToolsConfig, ImageConfig
+    output/               # GenerationOutput, Usage, Citation, SafetyResult, StreamDelta
   auth/
     protocol.py           # AuthResolver protocol
     google_adc.py         # Google ADC resolver (asyncio.to_thread wrapping google.auth)
@@ -81,11 +81,11 @@ fllm/
       protocol.py         # ModelRepository, DeploymentRepository, AuthRepository protocols
       sqlite.py           # SQLiteStore — default async SQLite implementation
   providers/
-    base.py               # Adapter protocol (serialize, parse_stream)
-    anthropic/vertex_v1.py
-    gemini/vertex_v1.py
-    mistral/vertex_v1.py
-    openai/azure_v1.py
+    base.py               # Adapter protocol (serialize, deserialize, parse_stream)
+    anthropic_vertex_v1.py
+    gemini_vertex_v1.py
+    mistral_vertex_v1.py
+    openai_azure_v1.py
   service.py              # DeploymentService — composes repos + auth resolution
   generate.py             # configure(), generate() — main entry point
   media.py                # MediaResolver protocol, resolve_references(), store_media()
@@ -97,10 +97,10 @@ fllm/
 
 ### LLMModel
 
-Simple identity — an ID, a display name, and the provider:
+Simple identity — just an ID and a display name:
 
 ```python
-LLMModel(id="claude-sonnet-4", name="Claude Sonnet 4", provider=Provider.ANTHROPIC)
+LLMModel(id="claude-sonnet-4", name="Claude Sonnet 4")
 ```
 
 ### Deployment
@@ -140,7 +140,7 @@ Built-in principles (`google_adc`, `api_key`) are pre-seeded in the default SQLi
 `GenerationInput` is the unified request object. It carries:
 
 - **model** — model ID string (resolved to a `Deployment` by `DeploymentService`)
-- **conversation** — list of `Message` with typed content blocks (text, media, tool calls, tool responses, thinking, errors). Each message has a `source` field (`user | model | system | tool`)
+- **conversation** — list of `Message` with typed content blocks (text, media, tool calls, tool responses, thinking, errors)
 - **llm_config** — generation parameters (temperature, top_p, top_k, max_tokens, stop sequences, thinking level)
 - **tool_config** — function calling tools, mode (auto/any/none), parallel calling
 - **image_config** — image generation settings (ratio, resolution, person generation, mime type)
@@ -231,12 +231,12 @@ Built-in resolvers:
 Register custom resolvers:
 
 ```python
-fllm.register_resolver("my_oauth", MyOAuthResolver())
+func_llm.register_resolver("my_oauth", MyOAuthResolver())
 ```
 
 ## Adapters
 
-Each provider/cloud/version combination has its own adapter implementing the `Adapter` protocol (`serialize`, `parse_stream`).
+Each provider/cloud/version combination has its own adapter implementing the `Adapter` protocol (`serialize`, `deserialize`, `parse_stream`, `get_stream_url`).
 
 | AdapterType | Provider | Cloud |
 |---|---|---|
@@ -250,8 +250,8 @@ New API versions get new enum values (e.g., `anthropic_vertex_v2`). Adapters are
 ## Requirements
 
 - Python >= 3.13
-- pydantic >= 2.13
-- httpx >= 0.28
-- aiosqlite >= 0.20
-- google-auth >= 2.55
-- requests >= 2.32
+- pydantic >= 2
+- httpx
+- aiosqlite
+- google-auth
+- requests

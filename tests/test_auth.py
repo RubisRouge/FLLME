@@ -123,7 +123,7 @@ class TestGoogleADCResolver:
         mock_creds.token = "fake-token-123"
         mock_creds.valid = False
 
-        with patch("func_llm.auth.google_adc.asyncio.to_thread") as mock_to_thread:
+        with patch("fllm.auth.google_adc.asyncio.to_thread") as mock_to_thread:
             mock_to_thread.side_effect = [
                 (mock_creds, "project-id"),
                 None,
@@ -145,7 +145,7 @@ class TestGoogleADCResolver:
         mock_creds.token = "token-1"
         mock_creds.valid = False
 
-        with patch("func_llm.auth.google_adc.asyncio.to_thread") as mock_to_thread:
+        with patch("fllm.auth.google_adc.asyncio.to_thread") as mock_to_thread:
             mock_to_thread.side_effect = [
                 (mock_creds, "project-id"),
                 None,
@@ -155,7 +155,7 @@ class TestGoogleADCResolver:
         mock_creds.valid = True
         mock_creds.token = "token-1"
 
-        with patch("func_llm.auth.google_adc.asyncio.to_thread") as mock_to_thread:
+        with patch("fllm.auth.google_adc.asyncio.to_thread") as mock_to_thread:
             headers = await resolver.get_headers(principle)
 
         assert headers == {"Authorization": "Bearer token-1"}
@@ -174,7 +174,7 @@ class TestGoogleADCResolver:
         mock_creds.token = "token-1"
         mock_creds.valid = False
 
-        with patch("func_llm.auth.google_adc.asyncio.to_thread") as mock_to_thread:
+        with patch("fllm.auth.google_adc.asyncio.to_thread") as mock_to_thread:
             mock_to_thread.side_effect = [
                 (mock_creds, "project-id"),
                 None,
@@ -184,7 +184,7 @@ class TestGoogleADCResolver:
         mock_creds.valid = False
         mock_creds.token = "token-2"
 
-        with patch("func_llm.auth.google_adc.asyncio.to_thread") as mock_to_thread:
+        with patch("fllm.auth.google_adc.asyncio.to_thread") as mock_to_thread:
             mock_to_thread.return_value = None
             headers = await resolver.get_headers(principle)
 
