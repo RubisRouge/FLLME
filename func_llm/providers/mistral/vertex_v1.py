@@ -75,15 +75,19 @@ def _serialize_user_content(
             case TextContent(text=text):
                 parts.append({"type": "text", "text": text})
             case MediaContent(source=Base64Source(data=data), media_type=mt):
-                parts.append({
-                    "type": "image_url",
-                    "image_url": {"url": f"data:{mt};base64,{data}"},
-                })
+                parts.append(
+                    {
+                        "type": "image_url",
+                        "image_url": {"url": f"data:{mt};base64,{data}"},
+                    }
+                )
             case MediaContent(source=UrlSource(url=url)):
-                parts.append({
-                    "type": "image_url",
-                    "image_url": {"url": url},
-                })
+                parts.append(
+                    {
+                        "type": "image_url",
+                        "image_url": {"url": url},
+                    }
+                )
     return parts
 
 
@@ -96,14 +100,16 @@ def _serialize_model_messages(msg: Message) -> list[dict[str, Any]]:
             case TextContent(text=text):
                 text_parts.append(text)
             case ToolCallContent(id=tc_id, name=name, arguments=args):
-                tool_calls.append({
-                    "id": tc_id,
-                    "type": "function",
-                    "function": {
-                        "name": name,
-                        "arguments": json.dumps(args),
-                    },
-                })
+                tool_calls.append(
+                    {
+                        "id": tc_id,
+                        "type": "function",
+                        "function": {
+                            "name": name,
+                            "arguments": json.dumps(args),
+                        },
+                    }
+                )
 
     result: dict[str, Any] = {"role": "assistant"}
     result["content"] = "\n".join(text_parts) if text_parts else None
@@ -123,9 +129,7 @@ class MistralVertexV1:
 
         for msg in gen_input.conversation:
             if msg.source == MessageSource.SYSTEM:
-                messages.append(
-                    {"role": "system", "content": _extract_text(msg)}
-                )
+                messages.append({"role": "system", "content": _extract_text(msg)})
             elif msg.source == MessageSource.USER:
                 messages.append(
                     {"role": "user", "content": _serialize_user_content(msg)}
@@ -135,14 +139,14 @@ class MistralVertexV1:
             elif msg.source == MessageSource.TOOL:
                 for content in msg.contents:
                     match content:
-                        case ToolResponseContent(
-                            tool_call_id=call_id, content=text
-                        ):
-                            messages.append({
-                                "role": "tool",
-                                "tool_call_id": call_id,
-                                "content": text,
-                            })
+                        case ToolResponseContent(tool_call_id=call_id, content=text):
+                            messages.append(
+                                {
+                                    "role": "tool",
+                                    "tool_call_id": call_id,
+                                    "content": text,
+                                }
+                            )
         payload["messages"] = messages
 
         cfg = gen_input.llm_config
@@ -161,28 +165,26 @@ class MistralVertexV1:
             payload["n"] = cfg.candidates
 
         if cfg.thinking != ThinkingLevel.NO:
-            payload["reasoning_effort"] = _THINKING_MAP.get(
-                cfg.thinking, "medium"
-            )
+            payload["reasoning_effort"] = _THINKING_MAP.get(cfg.thinking, "medium")
 
         if gen_input.tool_config and gen_input.tool_config.tools:
             tools: list[dict[str, Any]] = []
             for tool in gen_input.tool_config.tools:
-                tools.append({
-                    "type": "function",
-                    "function": {
-                        "name": tool.name,
-                        "description": tool.description,
-                        "parameters": tool.parameters,
-                    },
-                })
+                tools.append(
+                    {
+                        "type": "function",
+                        "function": {
+                            "name": tool.name,
+                            "description": tool.description,
+                            "parameters": tool.parameters,
+                        },
+                    }
+                )
             payload["tools"] = tools
             payload["tool_choice"] = _TOOL_MODE_MAP[gen_input.tool_config.mode]
 
         output_type = gen_input.output_type
-        if isinstance(output_type, type) and hasattr(
-            output_type, "model_json_schema"
-        ):
+        if isinstance(output_type, type) and hasattr(output_type, "model_json_schema"):
             payload["response_format"] = {
                 "type": "json_schema",
                 "json_schema": {
@@ -222,9 +224,7 @@ class MistralVertexV1:
 
             for choice in chunk.get("choices", []):
                 if fr := choice.get("finish_reason"):
-                    finish_reason = _FINISH_REASON_MAP.get(
-                        fr, FinishReason.ERROR
-                    )
+                    finish_reason = _FINISH_REASON_MAP.get(fr, FinishReason.ERROR)
 
                 delta = choice.get("delta", {})
 

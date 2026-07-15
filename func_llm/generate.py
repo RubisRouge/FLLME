@@ -37,9 +37,7 @@ async def generate(
     svc = service or get_service()
 
     if media_resolver is not None:
-        resolved = await resolve_references(
-            gen_input.conversation, media_resolver
-        )
+        resolved = await resolve_references(gen_input.conversation, media_resolver)
         gen_input = gen_input.model_copy(update={"conversation": resolved})
 
     deployment = await svc.resolve_deployment(gen_input.model, deployment_id)
@@ -48,13 +46,9 @@ async def generate(
     headers = await svc.get_auth_headers(deployment)
 
     if gen_input.stream:
-        return _stream(
-            deployment.url, headers, payload, adapter, media_resolver
-        )
+        return _stream(deployment.url, headers, payload, adapter, media_resolver)
 
-    return await _collect(
-        deployment.url, headers, payload, adapter, media_resolver
-    )
+    return await _collect(deployment.url, headers, payload, adapter, media_resolver)
 
 
 async def _collect(

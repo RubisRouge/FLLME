@@ -140,9 +140,7 @@ class GeminiVertexV1:
 
             for candidate in chunk.get("candidates", []):
                 if fr := candidate.get("finishReason"):
-                    finish_reason = _FINISH_REASON_MAP.get(
-                        fr, FinishReason.ERROR
-                    )
+                    finish_reason = _FINISH_REASON_MAP.get(fr, FinishReason.ERROR)
 
                 if ratings := candidate.get("safetyRatings"):
                     safety_ratings = ratings

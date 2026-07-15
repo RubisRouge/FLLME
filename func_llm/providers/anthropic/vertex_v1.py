@@ -61,28 +61,34 @@ def _serialize_content_blocks(
             case TextContent(text=text):
                 blocks.append({"type": "text", "text": text})
             case MediaContent(source=Base64Source(data=data), media_type=mt):
-                blocks.append({
-                    "type": "image",
-                    "source": {
-                        "type": "base64",
-                        "media_type": mt,
-                        "data": data,
-                    },
-                })
+                blocks.append(
+                    {
+                        "type": "image",
+                        "source": {
+                            "type": "base64",
+                            "media_type": mt,
+                            "data": data,
+                        },
+                    }
+                )
             case ThinkingContent(thinking=thinking, signature=sig):
                 if sig:
-                    blocks.append({
-                        "type": "thinking",
-                        "thinking": thinking,
-                        "signature": sig,
-                    })
+                    blocks.append(
+                        {
+                            "type": "thinking",
+                            "thinking": thinking,
+                            "signature": sig,
+                        }
+                    )
             case ToolCallContent(id=tc_id, name=name, arguments=args):
-                blocks.append({
-                    "type": "tool_use",
-                    "id": tc_id,
-                    "name": name,
-                    "input": args,
-                })
+                blocks.append(
+                    {
+                        "type": "tool_use",
+                        "id": tc_id,
+                        "name": name,
+                        "input": args,
+                    }
+                )
     return blocks
 
 
@@ -91,11 +97,13 @@ def _serialize_tool_results(msg: Message) -> list[dict[str, Any]]:
     for content in msg.contents:
         match content:
             case ToolResponseContent(tool_call_id=call_id, content=text):
-                blocks.append({
-                    "type": "tool_result",
-                    "tool_use_id": call_id,
-                    "content": text,
-                })
+                blocks.append(
+                    {
+                        "type": "tool_result",
+                        "tool_use_id": call_id,
+                        "content": text,
+                    }
+                )
     return blocks
 
 
@@ -112,38 +120,42 @@ class AnthropicVertexV1:
                 case MessageSource.SYSTEM:
                     continue
                 case MessageSource.USER:
-                    has_media = any(
-                        isinstance(c, MediaContent) for c in msg.contents
-                    )
+                    has_media = any(isinstance(c, MediaContent) for c in msg.contents)
                     if has_media:
-                        messages.append({
-                            "role": "user",
-                            "content": _serialize_content_blocks(msg),
-                        })
+                        messages.append(
+                            {
+                                "role": "user",
+                                "content": _serialize_content_blocks(msg),
+                            }
+                        )
                     else:
                         texts = [
-                            c.text
-                            for c in msg.contents
-                            if isinstance(c, TextContent)
+                            c.text for c in msg.contents if isinstance(c, TextContent)
                         ]
-                        messages.append({
-                            "role": "user",
-                            "content": "\n".join(texts),
-                        })
+                        messages.append(
+                            {
+                                "role": "user",
+                                "content": "\n".join(texts),
+                            }
+                        )
                 case MessageSource.MODEL:
                     blocks = _serialize_content_blocks(msg)
                     if blocks:
-                        messages.append({
-                            "role": "assistant",
-                            "content": blocks,
-                        })
+                        messages.append(
+                            {
+                                "role": "assistant",
+                                "content": blocks,
+                            }
+                        )
                 case MessageSource.TOOL:
                     tool_results = _serialize_tool_results(msg)
                     if tool_results:
-                        messages.append({
-                            "role": "user",
-                            "content": tool_results,
-                        })
+                        messages.append(
+                            {
+                                "role": "user",
+                                "content": tool_results,
+                            }
+                        )
 
         payload["messages"] = messages
 
@@ -174,11 +186,13 @@ class AnthropicVertexV1:
         if gen_input.tool_config and gen_input.tool_config.tools:
             tools: list[dict[str, Any]] = []
             for tool in gen_input.tool_config.tools:
-                tools.append({
-                    "name": tool.name,
-                    "description": tool.description,
-                    "input_schema": tool.parameters,
-                })
+                tools.append(
+                    {
+                        "name": tool.name,
+                        "description": tool.description,
+                        "input_schema": tool.parameters,
+                    }
+                )
             payload["tools"] = tools
 
             match gen_input.tool_config.mode:
@@ -190,9 +204,7 @@ class AnthropicVertexV1:
                     payload["tool_choice"] = {"type": "none"}
 
         output_type = gen_input.output_type
-        if isinstance(output_type, type) and hasattr(
-            output_type, "model_json_schema"
-        ):
+        if isinstance(output_type, type) and hasattr(output_type, "model_json_schema"):
             payload["output_config"] = {
                 "format": {
                     "type": "json_schema",
@@ -258,7 +270,9 @@ class AnthropicVertexV1:
                             thinking = delta.get("thinking", "")
                             if thinking:
                                 yield ThinkingDelta(thinking=thinking)
-                                accumulate_content(accumulated, ThinkingContent(thinking=thinking))
+                                accumulate_content(
+                                    accumulated, ThinkingContent(thinking=thinking)
+                                )
                         case "signature_delta":
                             sig = delta.get("signature", "")
                             if sig and accumulated:
@@ -275,15 +289,10 @@ class AnthropicVertexV1:
                                 accumulate_content(accumulated, TextContent(text=text))
                         case "input_json_delta":
                             if tool_acc is not None:
-                                tool_acc.partial_json += delta.get(
-                                    "partial_json", ""
-                                )
+                                tool_acc.partial_json += delta.get("partial_json", "")
 
                 case "content_block_stop":
-                    if (
-                        current_block_type == "tool_use"
-                        and tool_acc is not None
-                    ):
+                    if current_block_type == "tool_use" and tool_acc is not None:
                         try:
                             arguments = (
                                 json.loads(tool_acc.partial_json)
@@ -294,8 +303,7 @@ class AnthropicVertexV1:
                             arguments = {"raw": tool_acc.partial_json}
                         accumulated.append(
                             ToolCallContent(
-                                id=tool_acc.id
-                                or uuid.uuid4().hex[:12],
+                                id=tool_acc.id or uuid.uuid4().hex[:12],
                                 name=tool_acc.name,
                                 arguments=arguments,
                             )
@@ -306,9 +314,7 @@ class AnthropicVertexV1:
                 case "message_delta":
                     delta = chunk.get("delta", {})
                     if sr := delta.get("stop_reason"):
-                        finish_reason = _FINISH_REASON_MAP.get(
-                            sr, FinishReason.ERROR
-                        )
+                        finish_reason = _FINISH_REASON_MAP.get(sr, FinishReason.ERROR)
                     if usage := chunk.get("usage"):
                         output_tokens = usage.get("output_tokens", 0)
 
@@ -317,24 +323,17 @@ class AnthropicVertexV1:
 
         message = Message(source=MessageSource.MODEL, contents=accumulated)
 
-        thinking_tokens = (
-            input_usage.get("output_tokens_details", {}).get(
-                "thinking_tokens", 0
-            )
+        thinking_tokens = input_usage.get("output_tokens_details", {}).get(
+            "thinking_tokens", 0
         )
 
         parsed_usage = Usage(
             input_tokens=input_usage.get("input_tokens", 0),
-            output_tokens=output_tokens
-            or input_usage.get("output_tokens", 0),
+            output_tokens=output_tokens or input_usage.get("output_tokens", 0),
             thinking_tokens=thinking_tokens,
             cache=CacheUsage(
-                read_tokens=input_usage.get(
-                    "cache_read_input_tokens", 0
-                ),
-                creation_tokens=input_usage.get(
-                    "cache_creation_input_tokens", 0
-                ),
+                read_tokens=input_usage.get("cache_read_input_tokens", 0),
+                creation_tokens=input_usage.get("cache_creation_input_tokens", 0),
             ),
         )
 

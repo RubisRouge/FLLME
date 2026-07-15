@@ -26,9 +26,7 @@ class SerializationError(FuncLLMError):
 
 
 class MediaResolutionError(FuncLLMError):
-    def __init__(
-        self, failed_ids: list[str] | None = None, msg: str = ""
-    ) -> None:
+    def __init__(self, failed_ids: list[str] | None = None, msg: str = "") -> None:
         self.failed_ids = failed_ids
         if not msg:
             msg = "Media resolution failed"

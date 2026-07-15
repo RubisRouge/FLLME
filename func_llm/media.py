@@ -62,9 +62,7 @@ async def resolve_references(
     return out
 
 
-async def store_media(
-    message: Message, resolver: MediaResolver
-) -> Message:
+async def store_media(message: Message, resolver: MediaResolver) -> Message:
     sources: list[Base64Source | UrlSource] = []
     positions: list[int] = []
 
