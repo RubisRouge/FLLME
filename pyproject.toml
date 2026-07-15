@@ -1,9 +1,13 @@
 [project]
 name = "func-llm"
-version = "0.1.0"
+version = "0.1.1"
 description = "A functionnal oriented Python CLI for LLM calling with multi provider and multi model"
 readme = "README.md"
 requires-python = ">=3.13"
+authors = [
+  {name = "Romain BLANCHARD", email = "romain.blanchard.math@gmail.com"},
+]
+
 dependencies = [
     "aiosqlite>=0.20.0",
     "google-auth>=2.55.1",
@@ -26,3 +30,12 @@ dev = [
     "pytest-asyncio>=0.25.0",
     "ruff>=0.11",
 ]
+
+[tool.uv.workspace]
+members = [
+    ".",
+]
+
+[tool.uv.sources]
+func-llm = { workspace = true }
+
