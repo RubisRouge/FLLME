@@ -3,9 +3,8 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from ..errors import AuthError
-from .api_key import ApiKeyResolver
-from .google_adc import GoogleADCResolver
-from .protocol import AuthResolver
+from .deprecated.api_key import ApiKeyResolver
+from .deprecated.google_adc import GoogleADCResolver
 
 if TYPE_CHECKING:
     pass

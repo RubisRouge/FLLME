@@ -8,33 +8,40 @@ Provides a unified, provider-agnostic interface over **Anthropic**, **Gemini**, 
 
 ```python
 import asyncio
-import func_llm
+import fllm
+
+from fflm.auth.google import GoogleADCAuthResolver
+
 
 async def main():
     # 1. Create the service (default SQLite backend)
-    service = await func_llm.DeploymentService.from_sqlite("deployments.db")
-    func_llm.configure(service)
-
+    google_adc = GoogleADCAuthResolver()
+    service = await create_default_deployment_service()
+    # service = await fllm.DeploymentService.from_sqlite("deployments.db")
     # 2. Register a model and its deployment
-    await service.add_model(func_llm.LLMModel(
+    await service.add_model(fllm.LLMModel(
         id="claude-sonnet-4",
         name="Claude Sonnet 4",
-        provider=func_llm.Provider.ANTHROPIC,
+        provider=fllm.Provider.ANTHROPIC,
     ))
-    await service.add_deployment(func_llm.Deployment(
+    await service.add_deployment(
+      fllm.Deployment(
         id="claude-vertex-euw1",
         url="https://europe-west1-aiplatform.googleapis.com/v1/projects/my-project/...",
         model_id="claude-sonnet-4",
-        adapter=func_llm.AdapterType.ANTHROPIC_VERTEX_V1,
+        adapter=fllm.AdapterType.ANTHROPIC_VERTEX_V1,
         auth_id="google_adc",
-    ))
-
-    # 3. Generate
-    gen_input = func_llm.GenerationInput(
-        model="claude-sonnet-4",
-        conversation=[func_llm.Message(source="user", contents=[...])],
+      )
     )
-    output = await func_llm.generate(gen_input)
+    # 3. Generate
+    gen_input = fllm.GenerationInput(
+        model="claude-sonnet-4",
+        conversation=[fllm.Message(source="user", contents=[...])],
+    )
+    output = await service.generate(
+      gen_input,
+      auth_resolver=google_adc,
+    )
 
 asyncio.run(main())
 ```

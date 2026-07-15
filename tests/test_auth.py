@@ -3,8 +3,8 @@ from unittest.mock import MagicMock, patch
 import pytest
 
 from func_llm.auth import RESOLVERS, get_resolver, register_resolver
-from func_llm.auth.api_key import ApiKeyResolver
-from func_llm.auth.google_adc import GoogleADCResolver
+from func_llm.auth.deprecated.api_key import ApiKeyResolver
+from func_llm.auth.deprecated.google_adc import GoogleADCResolver
 from func_llm.errors import AuthError
 from func_llm.models.auth import AuthPrinciple
 

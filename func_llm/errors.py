@@ -35,3 +35,6 @@ class MediaResolutionError(FuncLLMError):
             if failed_ids:
                 msg += f" for IDs: {', '.join(failed_ids)}"
         super().__init__(msg)
+
+
+EMPTY_OUTPUT_STREAM_ERROR = ProviderError(0, "Stream ended without a final GenerationOutput")

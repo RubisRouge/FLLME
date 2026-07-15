@@ -7,7 +7,8 @@ from pathlib import Path
 import aiosqlite
 
 from ...errors import AuthError, DeploymentNotFoundError, ModelNotFoundError
-from ...models.auth import BUILTIN_PRINCIPLES, AuthPrinciple
+from ...auth.builtins import BUILTIN_PRINCIPLES
+from ...auth.types import AuthPrinciple
 from ...models.deployment import AdapterType, Deployment
 from ...models.model import LLMModel, Provider
 
