@@ -83,12 +83,16 @@ fllme/
   providers/
     base.py               # Adapter protocol (serialize, parse_stream)
     anthropic/vertex_v1.py
+    anthropic/vertex_v2.py
     gemini/vertex_v1.py
     mistral/vertex_v1.py
     openai/azure_v1.py
+    openai/azure_v2.py
+    openai/azure_v3.py
   service.py              # DeploymentService — composes repos + auth resolution
-  generate.py             # configure(), generate() — main entry point
-  media.py                # MediaResolver protocol, resolve_references(), store_media()
+  generate.py             # configure(), get_service(), generate() — main entry point
+  __main__.py             # Module entry point (python -m fllme)
+  media.py                # MediaResolver protocol (resolve_media, store_media)
   http.py                 # Shared httpx async client
   errors.py               # FuncLLMError hierarchy
 ```
@@ -144,7 +148,7 @@ Built-in principles (`google_adc`, `api_key`) are pre-seeded in the default SQLi
 - **llm_config** — generation parameters (temperature, top_p, top_k, max_tokens, stop sequences, thinking level)
 - **tool_config** — function calling tools, mode (auto/any/none), parallel calling
 - **image_config** — image generation settings (ratio, resolution, person generation, mime type)
-- **output_type** — text, image, hybrid, or a Pydantic `BaseModel` for structured output
+- **output_type** — `text`, `image`, or `hybrid` (see `BasicOutputType`)
 - **system_prompt** — extracted from provider-specific locations into a dedicated field
 - **stream** — whether to stream the response
 
@@ -166,18 +170,18 @@ During streaming, the library yields unified `StreamDelta` events (`TextDelta` o
 
 `MediaContent` blocks can carry three source types: `Base64Source`, `UrlSource`, or `ReferenceSource`. References are opaque user-domain IDs (e.g. a document-management key) that providers cannot consume directly.
 
-The `MediaResolver` protocol bridges this gap:
+The `MediaResolver` protocol bridges this gap. Its methods mutate the objects in-place — no copies or return values needed:
 
 ```python
 class MediaResolver(Protocol):
-    async def resolve(self, references: list[ReferenceSource]) -> list[Base64Source | UrlSource]: ...
-    async def store(self, media: list[Base64Source | UrlSource]) -> list[ReferenceSource]: ...
+    async def resolve_media(self, generation_input: GenerationInput) -> None: ...
+    async def store_media(self, output: GenerationOutput) -> None: ...
 ```
 
-- **`resolve`** — outbound: converts user-domain IDs into provider-sendable sources before serialization
-- **`store`** — inbound: uploads AI-generated media and returns user-domain IDs after deserialization
+- **`resolve_media`** — outbound: transforms `ReferenceSource` blocks in the input conversation into provider-sendable `Base64Source`/`UrlSource`, directly on the `GenerationInput`
+- **`store_media`** — inbound: transforms generated media in the `GenerationOutput` message into `ReferenceSource` blocks for user-domain storage
 
-Pass an implementation to `generate()` via the `media_resolver` keyword argument. Resolution and storage are batched and applied transparently. Resolver failures are wrapped in `MediaResolutionError`.
+Pass an implementation to `generate()` via the `media_resolver` keyword argument. Resolution and storage are applied transparently. Resolver failures are wrapped in `MediaResolutionError`.
 
 ## Deployment & Storage
 
@@ -238,18 +242,21 @@ fllme.register_resolver("my_oauth", MyOAuthResolver())
 
 Each provider/cloud/version combination has its own adapter implementing the `Adapter` protocol (`serialize`, `parse_stream`).
 
-| AdapterType | Provider | Cloud |
-|---|---|---|
-| `anthropic_vertex_v1` | Anthropic | Vertex AI |
-| `gemini_vertex_v1` | Gemini | Vertex AI |
-| `mistral_vertex_v1` | Mistral | Vertex AI |
-| `openai_azure_v1` | OpenAI | Azure |
+| AdapterType | Provider | Cloud | Notes |
+|---|---|---|---|
+| `anthropic_vertex_v1` | Anthropic | Vertex AI | |
+| `anthropic_vertex_v2` | Anthropic | Vertex AI | |
+| `gemini_vertex_v1` | Gemini | Vertex AI | |
+| `mistral_vertex_v1` | Mistral | Vertex AI | |
+| `openai_azure_v1` | OpenAI | Azure | Full sampling params, includes model field |
+| `openai_azure_v2` | OpenAI | Azure | Strips sampling params, no model field |
+| `openai_azure_v3` | OpenAI | Azure | Strips sampling params, includes model field |
 
-New API versions get new enum values (e.g., `anthropic_vertex_v2`). Adapters are looked up via `get_adapter(adapter_type)`.
+Adapters are looked up via `get_adapter(adapter_type)`.
 
 ## Requirements
 
-- Python >= 3.13
+- Python >= 3.11
 - pydantic >= 2.13
 - httpx >= 0.28
 - aiosqlite >= 0.20
