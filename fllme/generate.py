@@ -37,7 +37,9 @@ async def generate(
     svc = service or get_service()
 
     if media_resolver is not None:
-        await media_resolver.resolve_media(generation_input=gen_input) #Genereation input has now no ReferenceSource anymore
+        await media_resolver.resolve_media(
+            generation_input=gen_input
+        )  # Genereation input has now no ReferenceSource anymore
 
     deployment = await svc.resolve_deployment(gen_input.model, deployment_id)
     adapter = get_adapter(deployment.adapter)

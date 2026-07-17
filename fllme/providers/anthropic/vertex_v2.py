@@ -1,17 +1,10 @@
 from __future__ import annotations
 
-from collections.abc import AsyncIterator
 from typing import Any
 
-from ...models.input import GenerationInput, ThinkingLevel, ToolsCallingMode
-from ...models.output import (
-    GenerationOutput,
-    StreamDelta,
-)
+from ...models.input import GenerationInput
 from .vertex_v1 import (
     AnthropicVertexV1,
-    _serialize_content_blocks,
-    _serialize_tool_results,
 )
 
 
