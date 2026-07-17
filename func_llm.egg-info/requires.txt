@@ -1,5 +1,0 @@
-aiosqlite>=0.20.0
-google-auth>=2.55.1
-httpx>=0.28.1
-pydantic>=2.13.4
-requests>=2.32.4
