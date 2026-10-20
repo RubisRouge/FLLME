@@ -67,8 +67,8 @@ async def _collect(
     async for item in _stream(
         url, headers, payload, adapter, media_resolver, timeout=timeout
     ):
-        if isinstance(item, GenerationOutput):
-            result = item
+        if isinstance(item.content, GenerationOutput):
+            result = item.content
     if result is None:
         msg = "Stream ended without a final GenerationOutput"
         raise ProviderError(0, msg)
