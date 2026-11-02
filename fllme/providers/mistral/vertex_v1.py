@@ -8,12 +8,13 @@ from typing import Any
 
 from ...models.input import (
     GenerationInput,
+    OutputType,
     ThinkingLevel,
     Tool,
     ToolsCallingMode,
     WebSearchTool,
 )
-from ..base import accumulate_content
+from ..base import accumulate_content, is_structured, parse_structured
 from ...errors import SerializationError
 from ...models.message import (
     Base64Source,
@@ -215,6 +216,7 @@ class MistralVertexV1:
 
     async def parse_stream(
         self,
+        output_type: OutputType,
         lines: AsyncIterator[str],
     ) -> AsyncIterator[StreamDelta | GenerationOutput]:
         accumulated: list[Content] = []
@@ -292,10 +294,13 @@ class MistralVertexV1:
             total_tokens=usage_meta.get("total_tokens", 0),
         )
 
-        yield GenerationOutput(
+        output = GenerationOutput(
             id=completion_id or uuid.uuid4().hex,
             model=model_name,
             message=message,
             finish_reason=finish_reason,
             usage=parsed_usage,
         )
+        if is_structured(output_type):
+            parse_structured(output, output_type)
+        yield output

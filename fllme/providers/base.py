@@ -1,11 +1,14 @@
 from __future__ import annotations
 
 from collections.abc import AsyncIterator
-from typing import Any, Protocol
+from typing import Any, Protocol, TypeGuard
 
-from ..models.input import GenerationInput
+from pydantic import BaseModel, ValidationError
+
+from ..errors import StructuredOutputError
+from ..models.input import GenerationInput, OutputType
 from ..models.message import Content, TextContent, ThinkingContent
-from ..models.output import GenerationOutput, StreamDelta
+from ..models.output import FinishReason, GenerationOutput, StreamDelta
 
 
 class Adapter(Protocol):
@@ -13,6 +16,7 @@ class Adapter(Protocol):
 
     def parse_stream(
         self,
+        output_type: OutputType,
         lines: AsyncIterator[str],
     ) -> AsyncIterator[StreamDelta | GenerationOutput]: ...
 
@@ -37,3 +41,21 @@ def accumulate_content(accumulated: list[Content], item: Content) -> None:
         )
     else:
         accumulated.append(item)
+
+
+def is_structured(output_type: OutputType) -> TypeGuard[type[BaseModel]]:
+    return isinstance(output_type, type) and issubclass(output_type, BaseModel)
+
+
+def parse_structured(output: GenerationOutput, output_type: type[BaseModel]) -> None:
+    if output.finish_reason != FinishReason.STOP:
+        msg = f"Structured output not parsed: finish_reason={output.finish_reason}"
+        raise StructuredOutputError(output, msg)
+    text = "".join(
+        c.text for c in output.message.contents if isinstance(c, TextContent)
+    )
+    try:
+        output.parsed = output_type.model_validate_json(text)
+    except ValidationError as e:
+        msg = f"Response does not match {output_type.__name__}: {e}"
+        raise StructuredOutputError(output, msg) from e

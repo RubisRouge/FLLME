@@ -8,12 +8,13 @@ from typing import Any
 from ...models.input import (
     BasicOutputType,
     GenerationInput,
+    OutputType,
     ThinkingLevel,
     Tool,
     ToolsCallingMode,
     WebSearchTool,
 )
-from ..base import accumulate_content
+from ..base import accumulate_content, is_structured, parse_structured
 from ...models.message import (
     Base64Source,
     Content,
@@ -143,6 +144,7 @@ class GeminiVertexV1:
 
     async def parse_stream(
         self,
+        output_type: OutputType,
         lines: AsyncIterator[str],
     ) -> AsyncIterator[StreamDelta | GenerationOutput]:
         accumulated: list[Content] = []
@@ -237,7 +239,7 @@ class GeminiVertexV1:
         safety = _parse_safety_ratings(safety_ratings) if safety_ratings else None
         citations = _parse_grounding_metadata(grounding_meta) if grounding_meta else []
 
-        yield GenerationOutput(
+        output = GenerationOutput(
             id=uuid.uuid4().hex,
             model=model_name,
             message=message,
@@ -246,6 +248,9 @@ class GeminiVertexV1:
             safety=safety,
             citations=citations,
         )
+        if is_structured(output_type):
+            parse_structured(output, output_type)
+        yield output
 
 
 def _build_tool_name_map(conversation: list[Message]) -> dict[str, str]:
@@ -322,7 +327,7 @@ def _build_generation_config(gen_input: GenerationInput) -> dict[str, Any]:
     output_type = gen_input.output_type
     if isinstance(output_type, type) and hasattr(output_type, "model_json_schema"):
         gen_config["responseMimeType"] = "application/json"
-        gen_config["responseSchema"] = output_type.model_json_schema()
+        gen_config["responseJsonSchema"] = output_type.model_json_schema()
     elif output_type == BasicOutputType.IMAGE:
         gen_config["responseModalities"] = ["IMAGE"]
     elif output_type == BasicOutputType.HYBRID:

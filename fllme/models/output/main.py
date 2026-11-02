@@ -1,5 +1,6 @@
 from enum import StrEnum
 from typing import Annotated
+from typing import Any
 from typing import Literal
 from typing import Union
 
@@ -32,6 +33,7 @@ class GenerationOutput(BaseModel):
     citations: list[Citation] = []
     safety: SafetyResult | None = None
     created: int | None = None
+    parsed: Any = None
 
 
 class Response(BaseModel):

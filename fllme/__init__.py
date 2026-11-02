@@ -39,6 +39,7 @@ from .errors import (
     ModelNotFoundError,
     ProviderError,
     SerializationError,
+    StructuredOutputError,
 )
 
 __all__ = [
@@ -75,6 +76,7 @@ __all__ = [
     "SafetyResult",
     "SerializationError",
     "StreamDelta",
+    "StructuredOutputError",
     "TextDelta",
     "ThinkingDelta",
     "ThinkingLevel",

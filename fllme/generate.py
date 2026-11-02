@@ -7,6 +7,7 @@ from .errors import ProviderError
 from .http import get_client
 from .media import MediaResolver
 from .models.input import GenerationInput
+from .models.input import OutputType
 from .models.output import GenerationOutput, Response
 from .providers import get_adapter
 from .providers.base import Adapter
@@ -44,31 +45,52 @@ async def generate(
     adapter = get_adapter(deployment.adapter)
     payload: dict[str, Any] = adapter.serialize(gen_input)
     headers = await svc.get_auth_headers(deployment)
+    output_type = gen_input.output_type
 
     if gen_input.stream:
         return _stream(
-            deployment.url, headers, payload, adapter, media_resolver, timeout=timeout
+            deployment.url,
+            headers,
+            output_type,
+            payload,
+            adapter,
+            media_resolver=media_resolver,
+            timeout=timeout,
         )
 
     return await _collect(
-        deployment.url, headers, payload, adapter, media_resolver, timeout=timeout
+        deployment.url,
+        headers,
+        output_type,
+        payload,
+        adapter,
+        media_resolver=media_resolver,
+        timeout=timeout,
     )
 
 
 async def _collect(
     url: str,
     headers: dict[str, str],
+    output_type: OutputType,
     payload: dict[str, Any],
     adapter: Adapter,
+    *,
     media_resolver: MediaResolver | None = None,
     timeout: float = 120.0,
 ) -> GenerationOutput:
     result: GenerationOutput | None = None
     async for item in _stream(
-        url, headers, payload, adapter, media_resolver, timeout=timeout
+        url,
+        headers,
+        output_type,
+        payload,
+        adapter,
+        media_resolver=media_resolver,
+        timeout=timeout,
     ):
-        if isinstance(item, GenerationOutput):
-            result = item
+        if isinstance(item.content, GenerationOutput):
+            result = item.content
     if result is None:
         msg = "Stream ended without a final GenerationOutput"
         raise ProviderError(0, msg)
@@ -78,8 +100,10 @@ async def _collect(
 async def _stream(
     url: str,
     headers: dict[str, str],
+    output_type: OutputType,
     payload: dict[str, Any],
     adapter: Adapter,
+    *,
     media_resolver: MediaResolver | None = None,
     timeout: float = 120.0,
 ) -> AsyncIterator[Response]:
@@ -88,7 +112,7 @@ async def _stream(
         if response.status_code != 200:
             body = await response.aread()
             raise ProviderError(response.status_code, body.decode())
-        async for item in adapter.parse_stream(response.aiter_lines()):
+        async for item in adapter.parse_stream(output_type, response.aiter_lines()):
             if isinstance(item, GenerationOutput) and media_resolver is not None:
                 await media_resolver.store_media(item)
             yield Response(content=item)

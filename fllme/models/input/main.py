@@ -42,4 +42,4 @@ class GenerationInput(BaseModel):
     stream: bool = False
     tool_config: ToolsConfig | None = None
     image_config: ImageConfig | None = None
-    output_type: BasicOutputType = BasicOutputType.TEXT
+    output_type: OutputType = BasicOutputType.TEXT

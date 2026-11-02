@@ -8,12 +8,13 @@ from typing import Any
 
 from ...models.input import (
     GenerationInput,
+    OutputType,
     ThinkingLevel,
     Tool,
     ToolsCallingMode,
     WebSearchTool,
 )
-from ..base import accumulate_content
+from ..base import accumulate_content, is_structured
 from ...errors import SerializationError
 from ...models.message import (
     Base64Source,
@@ -235,8 +236,13 @@ class AnthropicVertexV1:
 
     async def parse_stream(
         self,
+        output_type: OutputType,
         lines: AsyncIterator[str],
     ) -> AsyncIterator[StreamDelta | GenerationOutput]:
+        if is_structured(output_type):
+            msg = f"Structured output not supported yet for {type(self).__name__}"
+            raise NotImplementedError(msg)
+
         accumulated: list[Content] = []
         finish_reason = FinishReason.STOP
         input_usage: dict[str, Any] = {}

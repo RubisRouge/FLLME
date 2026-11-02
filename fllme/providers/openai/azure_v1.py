@@ -8,12 +8,13 @@ from typing import Any
 
 from ...models.input import (
     GenerationInput,
+    OutputType,
     ThinkingLevel,
     Tool,
     ToolsCallingMode,
     WebSearchTool,
 )
-from ..base import accumulate_content
+from ..base import accumulate_content, is_structured, parse_structured
 from ...errors import SerializationError
 from ...models.message import (
     Base64Source,
@@ -129,6 +130,18 @@ def _serialize_model_messages(msg: Message) -> list[dict[str, Any]]:
     return [result]
 
 
+def _strict_schema(node: Any) -> Any:
+    if isinstance(node, list):
+        return [_strict_schema(item) for item in node]
+    if not isinstance(node, dict):
+        return node
+    out = {key: _strict_schema(value) for key, value in node.items()}
+    if out.get("type") == "object" and isinstance(out.get("properties"), dict):
+        out["additionalProperties"] = False
+        out["required"] = list(out["properties"])
+    return out
+
+
 class OpenAIAzureV1:
     def serialize(self, gen_input: GenerationInput) -> dict[str, Any]:
         payload: dict[str, Any] = {}
@@ -211,7 +224,7 @@ class OpenAIAzureV1:
                 "type": "json_schema",
                 "json_schema": {
                     "name": output_type.__name__,
-                    "schema": output_type.model_json_schema(),
+                    "schema": _strict_schema(output_type.model_json_schema()),
                     "strict": True,
                 },
             }
@@ -223,6 +236,7 @@ class OpenAIAzureV1:
 
     async def parse_stream(
         self,
+        output_type: OutputType,
         lines: AsyncIterator[str],
     ) -> AsyncIterator[StreamDelta | GenerationOutput]:
         accumulated: list[Content] = []
@@ -311,10 +325,13 @@ class OpenAIAzureV1:
             total_tokens=usage_meta.get("total_tokens", 0),
         )
 
-        yield GenerationOutput(
+        output = GenerationOutput(
             id=completion_id or uuid.uuid4().hex,
             model=model_name,
             message=message,
             finish_reason=finish_reason,
             usage=parsed_usage,
         )
+        if is_structured(output_type):
+            parse_structured(output, output_type)
+        yield output

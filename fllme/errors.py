@@ -1,3 +1,11 @@
+from __future__ import annotations
+
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from .models.output import GenerationOutput
+
+
 class FuncLLMError(Exception):
     pass
 
@@ -32,4 +40,10 @@ class MediaResolutionError(FuncLLMError):
             msg = "Media resolution failed"
             if failed_ids:
                 msg += f" for IDs: {', '.join(failed_ids)}"
+        super().__init__(msg)
+
+
+class StructuredOutputError(FuncLLMError):
+    def __init__(self, output: GenerationOutput, msg: str) -> None:
+        self.output = output
         super().__init__(msg)
