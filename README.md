@@ -303,6 +303,18 @@ await service.add_deployment(Deployment(..., adapter="anthropic_vertex_custom"))
 
 `Deployment.adapter` accepts a built-in `AdapterType` value or any registered id (stored as-is in SQLite). An id that is not registered raises `AdapterNotFoundError` (also a `ValueError`) when the adapter is looked up, so it can be registered after the deployment is stored. Registering a built-in id replaces that adapter for **every** deployment using it: prefer a new id.
 
+## Provider errors
+
+A non-200 provider response raises `ProviderError`. Besides the raw `status_code` and `body` (and the unchanged `str(err)`), it carries a stable classification so callers do not have to parse the body:
+
+| Attribute | Meaning |
+|---|---|
+| `kind` | `ProviderErrorKind`: `invalid_request`, `authentication`, `permission`, `not_found`, `rate_limited`, `unavailable`, `policy`, `unknown` |
+| `retryable` | `True` for 429 and 5xx |
+| `provider_message` | Message extracted from the provider JSON (`error.message` for Anthropic / OpenAI / Azure / Vertex, `message` or `detail[].msg` for Mistral), `None` if the body is not JSON |
+
+`kind` comes from the HTTP status, refined by the body: the Google `status` field, and policy markers (GCP organization policy, content filters) classify a 400/403 as `policy`.
+
 ## Requirements
 
 - Python >= 3.11

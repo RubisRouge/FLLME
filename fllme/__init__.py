@@ -41,6 +41,7 @@ from .errors import (
     MediaResolutionError,
     ModelNotFoundError,
     ProviderError,
+    ProviderErrorKind,
     SerializationError,
     StructuredOutputError,
 )
@@ -77,6 +78,7 @@ __all__ = [
     "ModelRepository",
     "Provider",
     "ProviderError",
+    "ProviderErrorKind",
     "SQLiteStore",
     "SafetyResult",
     "SerializationError",
