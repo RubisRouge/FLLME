@@ -14,7 +14,7 @@ from ...models.input import (
     ToolsCallingMode,
     WebSearchTool,
 )
-from ..base import accumulate_content, is_structured
+from ..base import accumulate_content, is_structured, parse_structured
 from ...errors import SerializationError
 from ...models.message import (
     Base64Source,
@@ -239,10 +239,6 @@ class AnthropicVertexV1:
         output_type: OutputType,
         lines: AsyncIterator[str],
     ) -> AsyncIterator[StreamDelta | GenerationOutput]:
-        if is_structured(output_type):
-            msg = f"Structured output not supported yet for {type(self).__name__}"
-            raise NotImplementedError(msg)
-
         accumulated: list[Content] = []
         finish_reason = FinishReason.STOP
         input_usage: dict[str, Any] = {}
@@ -362,10 +358,13 @@ class AnthropicVertexV1:
             ),
         )
 
-        yield GenerationOutput(
+        output = GenerationOutput(
             id=message_id or uuid.uuid4().hex,
             model=model_name,
             message=message,
             finish_reason=finish_reason,
             usage=parsed_usage,
         )
+        if is_structured(output_type):
+            parse_structured(output, output_type)
+        yield output
