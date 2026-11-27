@@ -1,3 +1,4 @@
+from ..errors import AdapterNotFoundError
 from ..models.deployment import AdapterType
 from .anthropic.vertex_v1 import AnthropicVertexV1
 from .anthropic.vertex_v2 import AnthropicVertexV2
@@ -8,7 +9,7 @@ from .openai.azure_v1 import OpenAIAzureV1
 from .openai.azure_v2 import OpenAIAzureV2
 from .openai.azure_v3 import OpenAIAzureV3
 
-ADAPTERS: dict[AdapterType, Adapter] = {
+ADAPTERS: dict[str, Adapter] = {
     AdapterType.ANTHROPIC_VERTEX_V1: AnthropicVertexV1(),
     AdapterType.ANTHROPIC_VERTEX_V2: AnthropicVertexV2(),
     AdapterType.GEMINI_VERTEX_V1: GeminiVertexV1(),
@@ -19,11 +20,21 @@ ADAPTERS: dict[AdapterType, Adapter] = {
 }
 
 
-def get_adapter(adapter_type: AdapterType) -> Adapter:
-    adapter = ADAPTERS.get(adapter_type)
+def register_adapter(adapter_id: str, adapter: Adapter) -> None:
+    """Register an adapter under ``adapter_id`` so deployments can reference it.
+
+    Registering a built-in id (an ``AdapterType`` value) replaces that adapter
+    for every deployment using it; use a new id to affect only your own.
+    """
+    ADAPTERS[adapter_id] = adapter
+
+
+def get_adapter(adapter_id: AdapterType | str) -> Adapter:
+    adapter = ADAPTERS.get(adapter_id)
     if adapter is None:
-        msg = f"Unknown adapter type: {adapter_type!r}"
-        raise ValueError(msg)
+        known = ", ".join(sorted(ADAPTERS))
+        msg = f"Unknown adapter: {str(adapter_id)!r} (registered: {known})"
+        raise AdapterNotFoundError(msg)
     return adapter
 
 
@@ -32,4 +43,5 @@ __all__ = [
     "Adapter",
     "AdapterType",
     "get_adapter",
+    "register_adapter",
 ]

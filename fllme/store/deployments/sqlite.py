@@ -9,7 +9,7 @@ import aiosqlite
 
 from ...errors import AuthError, DeploymentNotFoundError, ModelNotFoundError
 from ...models.auth import BUILTIN_PRINCIPLES, AuthPrinciple
-from ...models.deployment import AdapterType, Deployment
+from ...models.deployment import Deployment
 from ...models.model import LLMModel, ModelCapabilities, Provider
 
 logger = logging.getLogger(__name__)
@@ -123,7 +123,7 @@ class _SQLiteDeploymentRepository:
                 deployment.id,
                 deployment.url,
                 deployment.model_id,
-                deployment.adapter.value,
+                str(deployment.adapter),
                 deployment.auth_id,
             ),
         )
@@ -142,7 +142,7 @@ class _SQLiteDeploymentRepository:
             id=row[0],
             url=row[1],
             model_id=row[2],
-            adapter=AdapterType(row[3]),
+            adapter=row[3],
             auth_id=row[4],
         )
 
@@ -157,7 +157,7 @@ class _SQLiteDeploymentRepository:
                 id=r[0],
                 url=r[1],
                 model_id=r[2],
-                adapter=AdapterType(r[3]),
+                adapter=r[3],
                 auth_id=r[4],
             )
             for r in rows
@@ -173,7 +173,7 @@ class _SQLiteDeploymentRepository:
                 id=r[0],
                 url=r[1],
                 model_id=r[2],
-                adapter=AdapterType(r[3]),
+                adapter=r[3],
                 auth_id=r[4],
             )
             for r in rows
