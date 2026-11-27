@@ -21,6 +21,7 @@ from ..base import (
     is_structured,
     parse_structured,
 )
+from ...errors import SerializationError
 from ...models.message import (
     Base64Source,
     Content,
@@ -122,7 +123,8 @@ class GeminiVertexV1:
         if gen_input.tool_config and gen_input.tool_config.tools:
             func_decls: list[dict[str, Any]] = []
             tool_entries: list[dict[str, Any]] = []
-            for tool in gen_input.tool_config.tools:
+            requested_tools = gen_input.tool_config.tools
+            for tool in requested_tools:
                 match tool:
                     case WebSearchTool(exclude_domains=exclude_domains):
                         web_search: dict[str, Any] = {}
@@ -139,6 +141,19 @@ class GeminiVertexV1:
                         if parameters:
                             decl["parameters"] = parameters
                         func_decls.append(decl)
+
+            has_search = any(isinstance(t, WebSearchTool) for t in requested_tools)
+            if (
+                func_decls
+                and has_search
+                and not get_capabilities(model).search_with_function_tools
+            ):
+                error_msg = (
+                    "Web search cannot be combined with function tools on this "
+                    "Gemini model: the provider only allows multiple tools when "
+                    "they are all search tools"
+                )
+                raise SerializationError(error_msg)
 
             if func_decls:
                 tool_entries.insert(0, {"functionDeclarations": func_decls})
