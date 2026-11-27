@@ -14,7 +14,13 @@ from ...models.input import (
     ToolsCallingMode,
     WebSearchTool,
 )
-from ..base import accumulate_content, is_structured, parse_structured
+from ..base import (
+    accumulate_content,
+    closest_thinking_level,
+    get_capabilities,
+    is_structured,
+    parse_structured,
+)
 from ...models.message import (
     Base64Source,
     Content,
@@ -28,7 +34,7 @@ from ...models.message import (
     WebSearchQueryContent,
     UrlSource,
 )
-from ...models.model import LLMModel
+from ...models.model import LLMModel, ModelCapabilities, ThinkingStyle
 from ...models.output import (
     Citation,
     CitationType,
@@ -109,7 +115,7 @@ class GeminiVertexV1:
                 "parts": [{"text": gen_input.system_prompt}],
             }
 
-        gen_config = _build_generation_config(gen_input)
+        gen_config = _build_generation_config(gen_input, model)
         if gen_config:
             payload["generationConfig"] = gen_config
 
@@ -304,7 +310,31 @@ def _serialize_parts(
     return parts
 
 
-def _build_generation_config(gen_input: GenerationInput) -> dict[str, Any]:
+def _build_thinking_config(
+    level: ThinkingLevel, caps: ModelCapabilities
+) -> dict[str, Any]:
+    match caps.thinking_style:
+        case ThinkingStyle.NONE:
+            return {}
+        case ThinkingStyle.LEVEL:
+            # Gemini 3+ rejects thinkingBudget: it takes a thinking level.
+            accepted = closest_thinking_level(level, caps.thinking_efforts)
+            return {"thinkingLevel": accepted.name}
+        case _:
+            budget = _THINKING_BUDGET.get(level)
+            if budget is None:
+                return {}
+            # Gemini 2.5 rejects budgets outside the model's range.
+            if caps.thinking_budget_max is not None:
+                budget = min(budget, caps.thinking_budget_max)
+            if caps.thinking_budget_min is not None:
+                budget = max(budget, caps.thinking_budget_min)
+            return {"thinkingBudget": budget}
+
+
+def _build_generation_config(
+    gen_input: GenerationInput, model: LLMModel | None
+) -> dict[str, Any]:
     cfg = gen_input.llm_config
     gen_config: dict[str, Any] = {}
 
@@ -325,9 +355,9 @@ def _build_generation_config(gen_input: GenerationInput) -> dict[str, Any]:
         gen_config["frequencyPenalty"] = cfg.frequency_penalty
 
     if cfg.thinking != ThinkingLevel.NO:
-        budget = _THINKING_BUDGET.get(cfg.thinking)
-        if budget is not None:
-            gen_config["thinkingConfig"] = {"thinkingBudget": budget}
+        thinking_config = _build_thinking_config(cfg.thinking, get_capabilities(model))
+        if thinking_config:
+            gen_config["thinkingConfig"] = thinking_config
 
     output_type = gen_input.output_type
     if isinstance(output_type, type) and hasattr(output_type, "model_json_schema"):
