@@ -14,7 +14,12 @@ from ...models.input import (
     ToolsCallingMode,
     WebSearchTool,
 )
-from ..base import accumulate_content, is_structured, parse_structured
+from ..base import (
+    accumulate_content,
+    get_capabilities,
+    is_structured,
+    parse_structured,
+)
 from ...errors import SerializationError
 from ...models.message import (
     Base64Source,
@@ -27,7 +32,7 @@ from ...models.message import (
     ToolCallContent,
     ToolResponseContent,
 )
-from ...models.model import LLMModel
+from ...models.model import LLMModel, ThinkingStyle
 from ...models.output import (
     FinishReason,
     GenerationOutput,
@@ -207,7 +212,12 @@ class AnthropicVertexV1:
             payload["stop_sequences"] = cfg.stop
 
         if cfg.thinking != ThinkingLevel.NO:
-            if cfg.thinking in _THINKING_BUDGET:
+            if get_capabilities(model).thinking_style == ThinkingStyle.ADAPTIVE:
+                # Recent Claude models reject type=enabled: thinking depth is
+                # controlled by output_config.effort instead of a token budget.
+                payload["thinking"] = {"type": "adaptive"}
+                payload["output_config"] = {"effort": cfg.thinking.value}
+            elif cfg.thinking in _THINKING_BUDGET:
                 payload["thinking"] = {
                     "type": "enabled",
                     "budget_tokens": _effective_thinking_budget(
@@ -249,11 +259,10 @@ class AnthropicVertexV1:
 
         output_type = gen_input.output_type
         if isinstance(output_type, type) and hasattr(output_type, "model_json_schema"):
-            payload["output_config"] = {
-                "format": {
-                    "type": "json_schema",
-                    "schema": output_type.model_json_schema(),
-                },
+            # output_config may already carry the thinking effort: merge.
+            payload.setdefault("output_config", {})["format"] = {
+                "type": "json_schema",
+                "schema": output_type.model_json_schema(),
             }
 
         payload["stream"] = True

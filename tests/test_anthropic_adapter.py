@@ -15,6 +15,7 @@ from fllme.models.input import (
     ThinkingLevel,
 )
 from fllme.models.message import Message, MessageSource, TextContent
+from fllme.models.model import LLMModel, ModelCapabilities, Provider, ThinkingStyle
 from fllme.models.output import FinishReason, GenerationOutput
 from fllme.providers.anthropic.vertex_v1 import AnthropicVertexV1
 from fllme.providers.anthropic.vertex_v2 import AnthropicVertexV2
@@ -152,3 +153,73 @@ class TestThinkingBudget:
     def test_no_thinking_untouched(self, adapter_cls: type[AnthropicVertexV1]) -> None:
         payload = adapter_cls().serialize(_input(ThinkingLevel.NO, 1024))
         assert "thinking" not in payload
+
+
+def _model(style: ThinkingStyle) -> LLMModel:
+    return LLMModel(
+        id="claude",
+        name="Claude",
+        provider=Provider.ANTHROPIC,
+        capabilities=ModelCapabilities(thinking_style=style),
+    )
+
+
+@pytest.mark.parametrize("adapter_cls", [AnthropicVertexV1, AnthropicVertexV2])
+class TestAdaptiveThinking:
+    @pytest.mark.parametrize(
+        "level", [ThinkingLevel.LOW, ThinkingLevel.MEDIUM, ThinkingLevel.HIGH]
+    )
+    def test_adaptive_uses_effort(
+        self, adapter_cls: type[AnthropicVertexV1], level: ThinkingLevel
+    ) -> None:
+        payload = adapter_cls().serialize(
+            _input(level, 1024), _model(ThinkingStyle.ADAPTIVE)
+        )
+        assert payload["thinking"] == {"type": "adaptive"}
+        assert payload["output_config"] == {"effort": level.value}
+
+    def test_adaptive_ignores_max_tokens_bound(
+        self, adapter_cls: type[AnthropicVertexV1]
+    ) -> None:
+        # No budget_tokens, so the budget/max_tokens rule does not apply.
+        payload = adapter_cls().serialize(
+            _input(ThinkingLevel.HIGH, 1024), _model(ThinkingStyle.ADAPTIVE)
+        )
+        assert "budget_tokens" not in payload["thinking"]
+
+    def test_adaptive_merges_effort_and_format(
+        self, adapter_cls: type[AnthropicVertexV1]
+    ) -> None:
+        gen_input = _input(ThinkingLevel.LOW, 4096).model_copy(
+            update={"output_type": _Contact}
+        )
+        payload = adapter_cls().serialize(gen_input, _model(ThinkingStyle.ADAPTIVE))
+        assert payload["output_config"]["effort"] == "low"
+        assert payload["output_config"]["format"]["type"] == "json_schema"
+
+    def test_adaptive_without_thinking_sends_nothing(
+        self, adapter_cls: type[AnthropicVertexV1]
+    ) -> None:
+        payload = adapter_cls().serialize(
+            _input(ThinkingLevel.NO, 1024), _model(ThinkingStyle.ADAPTIVE)
+        )
+        assert "thinking" not in payload
+        assert "output_config" not in payload
+
+    def test_budget_style_unchanged(self, adapter_cls: type[AnthropicVertexV1]) -> None:
+        with_model = adapter_cls().serialize(
+            _input(ThinkingLevel.HIGH, 8192), _model(ThinkingStyle.BUDGET)
+        )
+        without_model = adapter_cls().serialize(_input(ThinkingLevel.HIGH, 8192))
+        assert with_model == without_model
+        assert with_model["thinking"]["type"] == "enabled"
+        assert "output_config" not in with_model
+
+    def test_structured_without_thinking_unchanged(
+        self, adapter_cls: type[AnthropicVertexV1]
+    ) -> None:
+        gen_input = _input(ThinkingLevel.NO, 1024).model_copy(
+            update={"output_type": _Contact}
+        )
+        payload = adapter_cls().serialize(gen_input)
+        assert list(payload["output_config"]) == ["format"]
