@@ -146,6 +146,7 @@ Built-in principles (`google_adc`, `api_key`) are pre-seeded in the default SQLi
 - **model** — model ID string (resolved to a `Deployment` by `DeploymentService`)
 - **conversation** — list of `Message` with typed content blocks (text, media, tool calls, tool responses, thinking, errors). Each message has a `source` field (`user | model | system | tool`)
 - **llm_config** — generation parameters (temperature, top_p, top_k, max_tokens, stop sequences, thinking level)
+  - Anthropic (Vertex): the thinking budget (`low` 1024, `medium` 8192, `high` 32768 tokens) is capped at `max_tokens - 1024`, since Anthropic requires `budget_tokens < max_tokens` and the remaining tokens are left for the answer. If that leaves less than 1024 tokens of budget (i.e. `max_tokens < 2048`), `SerializationError` is raised before any HTTP call. `max_tokens` is never raised silently.
 - **tool_config** — function calling tools, mode (auto/any/none), parallel calling
 - **image_config** — image generation settings (ratio, resolution, person generation, mime type)
 - **output_type** — `text`, `image`, or `hybrid` (see `BasicOutputType`)

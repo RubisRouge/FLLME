@@ -7,8 +7,14 @@ from typing import Any
 import pytest
 from pydantic import BaseModel
 
-from fllme.errors import StructuredOutputError
-from fllme.models.input import BasicOutputType
+from fllme.errors import SerializationError, StructuredOutputError
+from fllme.models.input import (
+    BasicOutputType,
+    GenerationInput,
+    LLMConfig,
+    ThinkingLevel,
+)
+from fllme.models.message import Message, MessageSource, TextContent
 from fllme.models.output import FinishReason, GenerationOutput
 from fllme.providers.anthropic.vertex_v1 import AnthropicVertexV1
 from fllme.providers.anthropic.vertex_v2 import AnthropicVertexV2
@@ -102,3 +108,47 @@ class TestStructuredOutput:
         out = results[-1]
         assert isinstance(out, GenerationOutput)
         assert out.parsed is None
+
+
+def _input(thinking: ThinkingLevel, max_tokens: int) -> GenerationInput:
+    return GenerationInput(
+        model="claude",
+        conversation=[
+            Message(source=MessageSource.USER, contents=[TextContent(text="Hi")])
+        ],
+        llm_config=LLMConfig(thinking=thinking, max_tokens=max_tokens),
+    )
+
+
+@pytest.mark.parametrize("adapter_cls", [AnthropicVertexV1, AnthropicVertexV2])
+class TestThinkingBudget:
+    def test_budget_below_max_tokens(
+        self, adapter_cls: type[AnthropicVertexV1]
+    ) -> None:
+        payload = adapter_cls().serialize(_input(ThinkingLevel.HIGH, 8192))
+        assert payload["thinking"]["type"] == "enabled"
+        assert payload["thinking"]["budget_tokens"] < 8192
+        assert payload["thinking"]["budget_tokens"] >= 1024
+
+    def test_large_max_tokens_keeps_budget(
+        self, adapter_cls: type[AnthropicVertexV1]
+    ) -> None:
+        payload = adapter_cls().serialize(_input(ThinkingLevel.HIGH, 64000))
+        assert payload["thinking"]["budget_tokens"] == 32768
+
+    def test_default_max_tokens_raises(
+        self, adapter_cls: type[AnthropicVertexV1]
+    ) -> None:
+        for level in (ThinkingLevel.LOW, ThinkingLevel.MEDIUM, ThinkingLevel.HIGH):
+            with pytest.raises(SerializationError, match="max_tokens"):
+                adapter_cls().serialize(_input(level, 1024))
+
+    def test_smallest_valid_max_tokens(
+        self, adapter_cls: type[AnthropicVertexV1]
+    ) -> None:
+        payload = adapter_cls().serialize(_input(ThinkingLevel.LOW, 2048))
+        assert payload["thinking"]["budget_tokens"] == 1024
+
+    def test_no_thinking_untouched(self, adapter_cls: type[AnthropicVertexV1]) -> None:
+        payload = adapter_cls().serialize(_input(ThinkingLevel.NO, 1024))
+        assert "thinking" not in payload
