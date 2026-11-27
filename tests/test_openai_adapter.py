@@ -698,42 +698,55 @@ class TestV3Serialize:
         assert payload["model"] == "gpt-5.6-sol"
 
 
+def _tool_input(parallel: bool) -> GenerationInput:
+    return _simple_input().model_copy(
+        update={
+            "tool_config": ToolsConfig(
+                tools=[
+                    Tool(
+                        name="get_weather",
+                        description="Get weather",
+                        parameters={"type": "object", "properties": {}},
+                    ),
+                ],
+                parallel_calling=parallel,
+                mode=ToolsCallingMode.AUTO,
+            ),
+        }
+    )
+
+
+def _model(*, parallel: bool) -> LLMModel:
+    return LLMModel(
+        id="o4-mini",
+        name="o4-mini",
+        provider=Provider.OPENAI,
+        capabilities=ModelCapabilities(supports_parallel_tool_calls=parallel),
+    )
+
+
 @pytest.mark.parametrize("adapter_cls", [OpenAIAzureV1, OpenAIAzureV2, OpenAIAzureV3])
-class TestReasoningEffortCapability:
-    @pytest.mark.parametrize("level", [ThinkingLevel.LOW, ThinkingLevel.HIGH])
-    def test_no_reasoning_model_omits_key(
-        self, adapter_cls: type[OpenAIAzureV1], level: ThinkingLevel
+class TestParallelToolCallsCapability:
+    @pytest.mark.parametrize("parallel", [True, False])
+    def test_unsupported_model_omits_key(
+        self, adapter_cls: type[OpenAIAzureV1], parallel: bool
     ) -> None:
-        inp = _simple_input().model_copy(
-            update={"llm_config": LLMConfig(thinking=level)}
-        )
-        model = LLMModel(
-            id="gpt-4o",
-            name="GPT-4o",
-            provider=Provider.OPENAI,
-            capabilities=ModelCapabilities(thinking_style=ThinkingStyle.NONE),
-        )
-        assert "reasoning_effort" not in adapter_cls().serialize(inp, model)
+        payload = adapter_cls().serialize(_tool_input(parallel), _model(parallel=False))
+        assert "parallel_tool_calls" not in payload
+        assert payload["tools"]
+        assert payload["tool_choice"] == "auto"
 
-    @pytest.mark.parametrize("style", [ThinkingStyle.EFFORT, ThinkingStyle.BUDGET])
-    def test_other_styles_send_key(
-        self, adapter_cls: type[OpenAIAzureV1], style: ThinkingStyle
+    @pytest.mark.parametrize("parallel", [True, False])
+    def test_default_model_sends_key(
+        self, adapter_cls: type[OpenAIAzureV1], parallel: bool
     ) -> None:
-        inp = _simple_input().model_copy(
-            update={"llm_config": LLMConfig(thinking=ThinkingLevel.HIGH)}
+        assert (
+            adapter_cls().serialize(_tool_input(parallel))["parallel_tool_calls"]
+            is parallel
         )
-        model = LLMModel(
-            id="o4",
-            name="o4",
-            provider=Provider.OPENAI,
-            capabilities=ModelCapabilities(thinking_style=style),
+        assert (
+            adapter_cls().serialize(_tool_input(parallel), _model(parallel=True))[
+                "parallel_tool_calls"
+            ]
+            is parallel
         )
-        assert adapter_cls().serialize(inp, model)["reasoning_effort"] == "high"
-
-    def test_without_capabilities_unchanged(
-        self, adapter_cls: type[OpenAIAzureV1]
-    ) -> None:
-        inp = _simple_input().model_copy(
-            update={"llm_config": LLMConfig(thinking=ThinkingLevel.LOW)}
-        )
-        assert adapter_cls().serialize(inp)["reasoning_effort"] == "low"
