@@ -3,13 +3,14 @@ from __future__ import annotations
 import json
 import logging
 from pathlib import Path
+from typing import Any
 
 import aiosqlite
 
 from ...errors import AuthError, DeploymentNotFoundError, ModelNotFoundError
 from ...models.auth import BUILTIN_PRINCIPLES, AuthPrinciple
 from ...models.deployment import AdapterType, Deployment
-from ...models.model import LLMModel, Provider
+from ...models.model import LLMModel, ModelCapabilities, Provider
 
 logger = logging.getLogger(__name__)
 
@@ -17,7 +18,8 @@ SCHEMA = """
 CREATE TABLE IF NOT EXISTS models (
     id       TEXT PRIMARY KEY,
     name     TEXT NOT NULL,
-    provider TEXT NOT NULL
+    provider TEXT NOT NULL,
+    capabilities TEXT NOT NULL DEFAULT '{}'
 );
 
 CREATE TABLE IF NOT EXISTS auth_principles (
@@ -38,40 +40,57 @@ CREATE TABLE IF NOT EXISTS deployments (
 """
 
 
+def _row_to_model(row: Any) -> LLMModel:
+    return LLMModel(
+        id=row[0],
+        name=row[1],
+        provider=Provider(row[2]),
+        capabilities=ModelCapabilities.model_validate_json(row[3]),
+    )
+
+
 class _SQLiteModelRepository:
     def __init__(self, db: aiosqlite.Connection) -> None:
         self._db = db
 
     async def add(self, model: LLMModel) -> None:
         await self._db.execute(
-            "INSERT OR REPLACE INTO models (id, name, provider) VALUES (?, ?, ?)",
-            (model.id, model.name, model.provider.value),
+            "INSERT OR REPLACE INTO models (id, name, provider, capabilities) "
+            "VALUES (?, ?, ?, ?)",
+            (
+                model.id,
+                model.name,
+                model.provider.value,
+                model.capabilities.model_dump_json(),
+            ),
         )
         await self._db.commit()
 
     async def get(self, model_id: str) -> LLMModel:
         cursor = await self._db.execute(
-            "SELECT id, name, provider FROM models WHERE id = ?",
+            "SELECT id, name, provider, capabilities FROM models WHERE id = ?",
             (model_id,),
         )
         row = await cursor.fetchone()
         if row is None:
             msg = f"Model {model_id!r} not found"
             raise ModelNotFoundError(msg)
-        return LLMModel(id=row[0], name=row[1], provider=Provider(row[2]))
+        return _row_to_model(row)
 
     async def get_for_provider(self, provider: Provider) -> list[LLMModel]:
         cursor = await self._db.execute(
-            "SELECT id, name, provider FROM models WHERE provider = ?",
+            "SELECT id, name, provider, capabilities FROM models WHERE provider = ?",
             (provider.value,),
         )
         rows = await cursor.fetchall()
-        return [LLMModel(id=r[0], name=r[1], provider=Provider(r[2])) for r in rows]
+        return [_row_to_model(r) for r in rows]
 
     async def list(self) -> list[LLMModel]:
-        cursor = await self._db.execute("SELECT id, name, provider FROM models")
+        cursor = await self._db.execute(
+            "SELECT id, name, provider, capabilities FROM models"
+        )
         rows = await cursor.fetchall()
-        return [LLMModel(id=r[0], name=r[1], provider=Provider(r[2])) for r in rows]
+        return [_row_to_model(r) for r in rows]
 
     async def remove(self, model_id: str) -> None:
         await self._db.execute(
@@ -255,9 +274,21 @@ class SQLiteStore:
     async def create(cls, db_path: str | Path = ":memory:") -> SQLiteStore:
         db = await aiosqlite.connect(str(db_path))
         await db.executescript(SCHEMA)
+        await cls._migrate(db)
         store = cls(db)
         await store._seed_builtins()
         return store
+
+    @staticmethod
+    async def _migrate(db: aiosqlite.Connection) -> None:
+        """Bring databases created by older versions up to the current schema."""
+        cursor = await db.execute("PRAGMA table_info(models)")
+        columns = {row[1] for row in await cursor.fetchall()}
+        if "capabilities" not in columns:
+            await db.execute(
+                "ALTER TABLE models ADD COLUMN capabilities TEXT NOT NULL DEFAULT '{}'"
+            )
+            await db.commit()
 
     async def _seed_builtins(self) -> None:
         for principle in BUILTIN_PRINCIPLES:

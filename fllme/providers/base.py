@@ -8,17 +8,27 @@ from pydantic import BaseModel, ValidationError
 from ..errors import StructuredOutputError
 from ..models.input import GenerationInput, OutputType
 from ..models.message import Content, TextContent, ThinkingContent
+from ..models.model import LLMModel, ModelCapabilities
 from ..models.output import FinishReason, GenerationOutput, StreamDelta
 
 
 class Adapter(Protocol):
-    def serialize(self, gen_input: GenerationInput) -> dict[str, Any]: ...
+    def serialize(
+        self,
+        gen_input: GenerationInput,
+        model: LLMModel | None = None,
+    ) -> dict[str, Any]: ...
 
     def parse_stream(
         self,
         output_type: OutputType,
         lines: AsyncIterator[str],
     ) -> AsyncIterator[StreamDelta | GenerationOutput]: ...
+
+
+def get_capabilities(model: LLMModel | None) -> ModelCapabilities:
+    """Capabilities of the resolved model; defaults when none was provided."""
+    return model.capabilities if model is not None else ModelCapabilities()
 
 
 def accumulate_content(accumulated: list[Content], item: Content) -> None:

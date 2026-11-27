@@ -3,6 +3,7 @@ from __future__ import annotations
 from typing import Any
 
 from ...models.input import GenerationInput
+from ...models.model import LLMModel
 from .azure_v2 import OpenAIAzureV2
 
 
@@ -14,7 +15,11 @@ class OpenAIAzureV3(OpenAIAzureV2):
     Inherits V2 behaviour (no temperature / top_p).
     """
 
-    def serialize(self, gen_input: GenerationInput) -> dict[str, Any]:
-        payload = super().serialize(gen_input)
+    def serialize(
+        self,
+        gen_input: GenerationInput,
+        model: LLMModel | None = None,
+    ) -> dict[str, Any]:
+        payload = super().serialize(gen_input, model)
         payload["model"] = gen_input.model
         return payload

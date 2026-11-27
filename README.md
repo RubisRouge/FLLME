@@ -58,7 +58,7 @@ The flow: `GenerationInput` → `DeploymentService` resolves the deployment → 
 ```
 fllme/
   models/
-    model.py              # LLMModel (id, name)
+    model.py              # LLMModel (id, name, provider, capabilities), ModelCapabilities
     deployment.py         # AdapterType enum, Deployment (url, model_id, adapter, auth_id)
     auth.py               # AuthPrinciple, built-in principles (google_adc, api_key)
     message.py            # Message, Content blocks (text, media, tool calls, thinking, errors)
@@ -81,7 +81,7 @@ fllme/
       protocol.py         # ModelRepository, DeploymentRepository, AuthRepository protocols
       sqlite.py           # SQLiteStore — default async SQLite implementation
   providers/
-    base.py               # Adapter protocol (serialize, parse_stream)
+    base.py               # Adapter protocol (serialize(gen_input, model), parse_stream)
     anthropic/vertex_v1.py
     anthropic/vertex_v2.py
     gemini/vertex_v1.py
@@ -101,11 +101,35 @@ fllme/
 
 ### LLMModel
 
-Simple identity — an ID, a display name, and the provider:
+An ID, a display name, the provider, and optional technical `capabilities`:
 
 ```python
 LLMModel(id="claude-sonnet-4", name="Claude Sonnet 4", provider=Provider.ANTHROPIC)
 ```
+
+Providers reject some fields depending on the model (thinking format, `reasoning_effort`, `parallel_tool_calls`, tool combinations). `ModelCapabilities` describes this, so adapters can shape the payload per model. Capabilities live in the store like any other model data — FLLME ships no hardcoded model list.
+
+```python
+LLMModel(
+    id="mistral-small-3.1",
+    name="Mistral Small 3.1",
+    provider=Provider.MISTRAL,
+    capabilities=ModelCapabilities(
+        thinking_style=ThinkingStyle.NONE,
+        supports_parallel_tool_calls=False,
+    ),
+)
+```
+
+| Field | Default | Meaning |
+|---|---|---|
+| `thinking_style` | `budget` | `none` (no reasoning mode), `budget` (token budget), `adaptive` (`thinking.type=adaptive` + `output_config.effort`), `level` (`thinkingLevel`), `effort` (`reasoning_effort`) |
+| `thinking_budget_min` / `thinking_budget_max` | `None` | Accepted token budget range |
+| `thinking_efforts` | `None` | Accepted thinking levels (`None` = all) |
+| `supports_parallel_tool_calls` | `True` | Whether `parallel_tool_calls` may be sent |
+| `search_with_function_tools` | `True` | Whether web search and function tools can share a request |
+
+The defaults reproduce the behaviour from before capabilities existed: a model registered without capabilities is serialized exactly as it used to be. Re-register a model with `add_model` to update its capabilities.
 
 ### Deployment
 
@@ -196,7 +220,7 @@ Three separate async protocols define data access — users can swap the storage
 
 ### SQLiteStore (default)
 
-`SQLiteStore` is the built-in implementation using `aiosqlite`. It manages three tables with foreign keys (deployments cascade-delete when a model is removed) and pre-seeds built-in auth principles.
+`SQLiteStore` is the built-in implementation using `aiosqlite`. It manages three tables with foreign keys (deployments cascade-delete when a model is removed) and pre-seeds built-in auth principles. Databases created by older versions are migrated automatically on open (e.g. the `capabilities` column of `models`, defaulting to the previous behaviour).
 
 ```python
 store = await SQLiteStore.create("deployments.db")  # or ":memory:"
@@ -242,6 +266,8 @@ fllme.register_resolver("my_oauth", MyOAuthResolver())
 ## Adapters
 
 Each provider/cloud/version combination has its own adapter implementing the `Adapter` protocol (`serialize`, `parse_stream`).
+
+`serialize(gen_input, model)` receives the resolved `LLMModel` (`None` falls back to default capabilities; use `providers.base.get_capabilities(model)`). **Breaking for third-party adapters:** a custom adapter whose `serialize()` only takes `gen_input` must add the `model` parameter.
 
 | AdapterType | Provider | Cloud | Notes |
 |---|---|---|---|

@@ -1,12 +1,15 @@
 from collections.abc import AsyncGenerator
+from pathlib import Path
 
 import pytest
+import aiosqlite
 import pytest_asyncio
 
 from fllme.errors import AuthError, DeploymentNotFoundError, ModelNotFoundError
 from fllme.models.auth import AuthPrinciple
 from fllme.models.deployment import AdapterType, Deployment
-from fllme.models.model import LLMModel, Provider
+from fllme.models.input import ThinkingLevel
+from fllme.models.model import LLMModel, ModelCapabilities, Provider, ThinkingStyle
 from fllme.store.deployments import SQLiteStore
 
 
@@ -212,3 +215,71 @@ class TestAuthRepository:
         await store.auth.add(custom)
         await store.auth.remove("temp")
         assert not await store.auth.exists("temp")
+
+
+class TestModelCapabilities:
+    @pytest.mark.asyncio
+    async def test_roundtrip(self, store: SQLiteStore) -> None:
+        model = LLMModel(
+            id="m",
+            name="M",
+            provider=Provider.MISTRAL,
+            capabilities=ModelCapabilities(
+                thinking_style=ThinkingStyle.EFFORT,
+                thinking_budget_min=1024,
+                thinking_budget_max=24576,
+                thinking_efforts=[ThinkingLevel.HIGH],
+                supports_parallel_tool_calls=False,
+                search_with_function_tools=False,
+            ),
+        )
+        await store.models.add(model)
+        assert await store.models.get("m") == model
+        assert await store.models.list() == [model]
+        assert await store.models.get_for_provider(Provider.MISTRAL) == [model]
+
+    @pytest.mark.asyncio
+    async def test_model_without_capabilities_gets_defaults(
+        self, store: SQLiteStore, sample_model: LLMModel
+    ) -> None:
+        await store.models.add(sample_model)
+        got = await store.models.get(sample_model.id)
+        assert got.capabilities == ModelCapabilities()
+
+    @pytest.mark.asyncio
+    async def test_migrates_database_created_before_capabilities(
+        self, tmp_path: Path
+    ) -> None:
+        db_path = tmp_path / "old.db"
+        async with aiosqlite.connect(db_path) as db:
+            await db.execute(
+                "CREATE TABLE models (id TEXT PRIMARY KEY, name TEXT NOT NULL, "
+                "provider TEXT NOT NULL)"
+            )
+            await db.execute("INSERT INTO models VALUES ('old', 'Old', 'anthropic')")
+            await db.commit()
+
+        store = await SQLiteStore.create(db_path)
+        try:
+            got = await store.models.get("old")
+            assert got.capabilities == ModelCapabilities()
+            await store.models.add(
+                LLMModel(
+                    id="new",
+                    name="New",
+                    provider=Provider.GEMINI,
+                    capabilities=ModelCapabilities(thinking_style=ThinkingStyle.LEVEL),
+                )
+            )
+            assert (
+                await store.models.get("new")
+            ).capabilities.thinking_style == ThinkingStyle.LEVEL
+        finally:
+            await store.close()
+
+        # Re-opening an already migrated database is a no-op.
+        store = await SQLiteStore.create(db_path)
+        try:
+            assert len(await store.models.list()) == 2
+        finally:
+            await store.close()

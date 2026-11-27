@@ -27,6 +27,7 @@ from ...models.message import (
     ToolCallContent,
     ToolResponseContent,
 )
+from ...models.model import LLMModel
 from ...models.output import (
     FinishReason,
     GenerationOutput,
@@ -136,7 +137,11 @@ def _serialize_tool_results(msg: Message) -> list[dict[str, Any]]:
 
 
 class AnthropicVertexV1:
-    def serialize(self, gen_input: GenerationInput) -> dict[str, Any]:
+    def serialize(
+        self,
+        gen_input: GenerationInput,
+        model: LLMModel | None = None,
+    ) -> dict[str, Any]:
         payload: dict[str, Any] = {
             "anthropic_version": "vertex-2023-10-16",
         }

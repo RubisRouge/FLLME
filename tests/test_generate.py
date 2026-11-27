@@ -8,8 +8,13 @@ from pydantic import BaseModel
 
 from fllme.errors import StructuredOutputError
 from fllme.generate import configure, get_service
-from fllme.models.input import BasicOutputType
+from fllme.models.deployment import AdapterType, Deployment
+from fllme.models.input import BasicOutputType, GenerationInput
+from fllme.models.message import Message, MessageSource, TextContent
+from fllme.models.model import LLMModel, ModelCapabilities, Provider, ThinkingStyle
+from fllme.models.output import GenerationOutput
 from fllme.models.output import FinishReason
+from fllme.providers import ADAPTERS
 from fllme.providers.gemini.vertex_v1 import GeminiVertexV1
 from fllme.service import DeploymentService
 
@@ -127,3 +132,66 @@ class TestConfigureAndGetService:
             assert get_service() is svc
         finally:
             mod.DEFAULT_SERVICE = original
+
+
+class _RecordingAdapter(GeminiVertexV1):
+    def __init__(self) -> None:
+        self.seen: LLMModel | None = None
+
+    def serialize(
+        self, gen_input: GenerationInput, model: LLMModel | None = None
+    ) -> dict[str, Any]:
+        self.seen = model
+        return super().serialize(gen_input, model)
+
+
+class TestModelCapabilitiesReachAdapter:
+    @pytest.mark.asyncio
+    async def test_adapter_receives_resolved_model(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        svc = await DeploymentService.from_sqlite(":memory:")
+        model = LLMModel(
+            id="gem",
+            name="Gem",
+            provider=Provider.GEMINI,
+            capabilities=ModelCapabilities(thinking_style=ThinkingStyle.LEVEL),
+        )
+        await svc.add_model(model)
+        await svc.add_deployment(
+            Deployment(
+                id="d1",
+                url="https://x",
+                model_id="gem",
+                adapter=AdapterType.GEMINI_VERTEX_V1,
+                auth_id="api_key",
+            )
+        )
+
+        async def _no_headers(_: Deployment) -> dict[str, str]:
+            return {}
+
+        monkeypatch.setattr(svc, "get_auth_headers", _no_headers)
+        body = _sse([_gemini_chunk("hi", finish="STOP")])
+        monkeypatch.setattr(
+            _gen_mod(), "get_client", lambda timeout=120.0: _client(body)
+        )
+        adapter = _RecordingAdapter()
+        monkeypatch.setitem(ADAPTERS, AdapterType.GEMINI_VERTEX_V1, adapter)
+
+        out = await _gen_mod().generate(
+            GenerationInput(
+                model="gem",
+                conversation=[
+                    Message(
+                        source=MessageSource.USER,
+                        contents=[TextContent(text="Hi")],
+                    )
+                ],
+            ),
+            service=svc,
+        )
+
+        assert isinstance(out, GenerationOutput)
+        assert adapter.seen == model
+        assert adapter.seen.capabilities.thinking_style == ThinkingStyle.LEVEL
