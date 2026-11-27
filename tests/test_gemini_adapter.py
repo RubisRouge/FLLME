@@ -7,6 +7,7 @@ from typing import Any
 import pytest
 from pydantic import BaseModel
 
+from fllme.errors import SerializationError
 from fllme.models.input import (
     BasicOutputType,
     GenerationInput,
@@ -982,3 +983,43 @@ class TestClosestThinkingLevel:
         assert (
             closest_thinking_level(ThinkingLevel.HIGH, accepted) == ThinkingLevel.MEDIUM
         )
+
+
+def _tools_input(*tools: Tool | WebSearchTool) -> GenerationInput:
+    return _simple_input().model_copy(
+        update={
+            "tool_config": ToolsConfig(
+                tools=list(tools),
+                parallel_calling=False,
+                mode=ToolsCallingMode.AUTO,
+            ),
+        }
+    )
+
+
+_FUNC = Tool(name="f", description="d", parameters={"type": "object"})
+
+
+class TestSearchWithFunctionTools:
+    def test_unsupported_model_mixing_raises(self) -> None:
+        model = _gemini_model(search_with_function_tools=False)
+        with pytest.raises(SerializationError, match="search"):
+            GeminiVertexV1().serialize(_tools_input(_FUNC, WebSearchTool()), model)
+
+    def test_unsupported_model_search_only_unchanged(self) -> None:
+        model = _gemini_model(search_with_function_tools=False)
+        payload = GeminiVertexV1().serialize(_tools_input(WebSearchTool()), model)
+        assert payload["tools"] == [{"enterpriseWebSearch": {}}]
+
+    def test_unsupported_model_function_only_unchanged(self) -> None:
+        model = _gemini_model(search_with_function_tools=False)
+        payload = GeminiVertexV1().serialize(_tools_input(_FUNC), model)
+        assert len(payload["tools"]) == 1
+        assert "functionDeclarations" in payload["tools"][0]
+
+    def test_default_model_mixing_unchanged(self) -> None:
+        for model in (None, _gemini_model()):
+            payload = GeminiVertexV1().serialize(
+                _tools_input(_FUNC, WebSearchTool()), model
+            )
+            assert len(payload["tools"]) == 2
