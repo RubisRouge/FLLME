@@ -37,6 +37,8 @@ from fllme.models.output import (
     TextDelta,
     ThinkingDelta,
 )
+from fllme.models.model import LLMModel, ModelCapabilities, Provider, ThinkingStyle
+from fllme.providers.base import closest_thinking_level
 from fllme.providers.gemini.vertex_v1 import GeminiVertexV1
 
 
@@ -883,3 +885,100 @@ class TestSerializeThoughtSignature:
             },
             "thoughtSignature": "fc_sig",
         }
+
+
+def _thinking_input(level: ThinkingLevel) -> GenerationInput:
+    return _simple_input().model_copy(update={"llm_config": LLMConfig(thinking=level)})
+
+
+def _gemini_model(**caps: Any) -> LLMModel:
+    return LLMModel(
+        id="gemini",
+        name="Gemini",
+        provider=Provider.GEMINI,
+        capabilities=ModelCapabilities(**caps),
+    )
+
+
+def _thinking_config(payload: dict[str, Any]) -> dict[str, Any]:
+    cfg: dict[str, Any] = payload.get("generationConfig", {}).get("thinkingConfig", {})
+    return cfg
+
+
+class TestThinkingCapabilities:
+    @pytest.mark.parametrize(
+        ("level", "expected"),
+        [(ThinkingLevel.LOW, "LOW"), (ThinkingLevel.HIGH, "HIGH")],
+    )
+    def test_level_style_sends_level_not_budget(
+        self, level: ThinkingLevel, expected: str
+    ) -> None:
+        payload = GeminiVertexV1().serialize(
+            _thinking_input(level), _gemini_model(thinking_style=ThinkingStyle.LEVEL)
+        )
+        assert _thinking_config(payload) == {"thinkingLevel": expected}
+
+    def test_level_style_maps_to_closest_accepted(self) -> None:
+        model = _gemini_model(
+            thinking_style=ThinkingStyle.LEVEL,
+            thinking_efforts=[ThinkingLevel.LOW, ThinkingLevel.HIGH],
+        )
+        payload = GeminiVertexV1().serialize(
+            _thinking_input(ThinkingLevel.MEDIUM), model
+        )
+        assert _thinking_config(payload) == {"thinkingLevel": "HIGH"}
+
+    def test_budget_style_is_capped_to_model_maximum(self) -> None:
+        model = _gemini_model(
+            thinking_style=ThinkingStyle.BUDGET, thinking_budget_max=24576
+        )
+        payload = GeminiVertexV1().serialize(_thinking_input(ThinkingLevel.HIGH), model)
+        assert _thinking_config(payload) == {"thinkingBudget": 24576}
+
+    def test_budget_style_is_raised_to_model_minimum(self) -> None:
+        model = _gemini_model(
+            thinking_style=ThinkingStyle.BUDGET, thinking_budget_min=2048
+        )
+        payload = GeminiVertexV1().serialize(_thinking_input(ThinkingLevel.LOW), model)
+        assert _thinking_config(payload) == {"thinkingBudget": 2048}
+
+    def test_budget_within_range_unchanged(self) -> None:
+        model = _gemini_model(thinking_budget_min=128, thinking_budget_max=24576)
+        payload = GeminiVertexV1().serialize(
+            _thinking_input(ThinkingLevel.MEDIUM), model
+        )
+        assert _thinking_config(payload) == {"thinkingBudget": 8192}
+
+    def test_none_style_omits_thinking_config(self) -> None:
+        payload = GeminiVertexV1().serialize(
+            _thinking_input(ThinkingLevel.HIGH),
+            _gemini_model(thinking_style=ThinkingStyle.NONE),
+        )
+        assert _thinking_config(payload) == {}
+
+    def test_without_capabilities_unchanged(self) -> None:
+        payload = GeminiVertexV1().serialize(_thinking_input(ThinkingLevel.HIGH))
+        assert _thinking_config(payload) == {"thinkingBudget": 32768}
+
+
+class TestClosestThinkingLevel:
+    def test_unrestricted_returns_level(self) -> None:
+        assert (
+            closest_thinking_level(ThinkingLevel.MEDIUM, None) == ThinkingLevel.MEDIUM
+        )
+
+    def test_accepted_level_kept(self) -> None:
+        accepted = [ThinkingLevel.LOW, ThinkingLevel.HIGH]
+        assert closest_thinking_level(ThinkingLevel.LOW, accepted) == ThinkingLevel.LOW
+
+    def test_tie_goes_higher(self) -> None:
+        accepted = [ThinkingLevel.LOW, ThinkingLevel.HIGH]
+        assert (
+            closest_thinking_level(ThinkingLevel.MEDIUM, accepted) == ThinkingLevel.HIGH
+        )
+
+    def test_picks_nearest(self) -> None:
+        accepted = [ThinkingLevel.LOW, ThinkingLevel.MEDIUM]
+        assert (
+            closest_thinking_level(ThinkingLevel.HIGH, accepted) == ThinkingLevel.MEDIUM
+        )
