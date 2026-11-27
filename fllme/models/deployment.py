@@ -11,6 +11,7 @@ class AdapterType(StrEnum):
     OPENAI_AZURE_V1 = "openai_azure_v1"
     OPENAI_AZURE_V2 = "openai_azure_v2"
     OPENAI_AZURE_V3 = "openai_azure_v3"
+    OPENAI_AZURE_RESPONSES_V1 = "openai_azure_responses_v1"
 
 
 class Deployment(BaseModel):

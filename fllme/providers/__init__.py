@@ -4,6 +4,7 @@ from .anthropic.vertex_v2 import AnthropicVertexV2
 from .base import Adapter
 from .gemini.vertex_v1 import GeminiVertexV1
 from .mistral.vertex_v1 import MistralVertexV1
+from .openai.azure_responses_v1 import OpenAIAzureResponsesV1
 from .openai.azure_v1 import OpenAIAzureV1
 from .openai.azure_v2 import OpenAIAzureV2
 from .openai.azure_v3 import OpenAIAzureV3
@@ -16,6 +17,7 @@ ADAPTERS: dict[AdapterType, Adapter] = {
     AdapterType.OPENAI_AZURE_V1: OpenAIAzureV1(),
     AdapterType.OPENAI_AZURE_V2: OpenAIAzureV2(),
     AdapterType.OPENAI_AZURE_V3: OpenAIAzureV3(),
+    AdapterType.OPENAI_AZURE_RESPONSES_V1: OpenAIAzureResponsesV1(),
 }
 
 

@@ -280,6 +280,9 @@ Each provider/cloud/version combination has its own adapter implementing the `Ad
 | `openai_azure_v1` | OpenAI | Azure | Full sampling params, includes model field |
 | `openai_azure_v2` | OpenAI | Azure | Strips sampling params, no model field |
 | `openai_azure_v3` | OpenAI | Azure | Strips sampling params, includes model field |
+| `openai_azure_responses_v1` | OpenAI | Azure | Responses API (`/responses`): required for GPT-5.6 function tools + `reasoning_effort`. Sends `input`/`instructions`, flat `tools`, `reasoning: {effort, summary}`, `text.format` for structured output, `store: false`. No `stop`, penalties or `candidates > 1` (the latter raises `SerializationError`) |
+
+Point the deployment URL of an `openai_azure_responses_v1` deployment at the Responses endpoint, not `/chat/completions`.
 
 Adapters are looked up via `get_adapter(adapter_type)`.
 
