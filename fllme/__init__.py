@@ -30,10 +30,11 @@ from .models import (
 from .auth import AuthResolver, get_resolver, register_resolver
 from .store import AuthRepository, DeploymentRepository, ModelRepository, SQLiteStore
 from .service import DeploymentService
-from .providers import Adapter, get_adapter
+from .providers import Adapter, get_adapter, register_adapter
 from .generate import configure, generate, get_service
 from .media import MediaResolver
 from .errors import (
+    AdapterNotFoundError,
     AuthError,
     DeploymentNotFoundError,
     FuncLLMError,
@@ -46,6 +47,7 @@ from .errors import (
 
 __all__ = [
     "Adapter",
+    "AdapterNotFoundError",
     "AdapterType",
     "AuthError",
     "AuthPrinciple",
@@ -93,5 +95,6 @@ __all__ = [
     "get_adapter",
     "get_resolver",
     "get_service",
+    "register_adapter",
     "register_resolver",
 ]

@@ -284,7 +284,24 @@ Each provider/cloud/version combination has its own adapter implementing the `Ad
 
 Point the deployment URL of an `openai_azure_responses_v1` deployment at the Responses endpoint, not `/chat/completions`.
 
-Adapters are looked up via `get_adapter(adapter_type)`.
+Adapters are looked up via `get_adapter(adapter_id)`.
+
+### Custom adapters
+
+To fix a payload without waiting for a release, register your own adapter (typically a subclass of a built-in one) under a new id, the same way as `register_resolver`:
+
+```python
+class MyAnthropic(AnthropicVertexV2):
+    def serialize(self, gen_input, model=None):
+        payload = super().serialize(gen_input, model)
+        ...
+        return payload
+
+fllme.register_adapter("anthropic_vertex_custom", MyAnthropic())
+await service.add_deployment(Deployment(..., adapter="anthropic_vertex_custom"))
+```
+
+`Deployment.adapter` accepts a built-in `AdapterType` value or any registered id (stored as-is in SQLite). An id that is not registered raises `AdapterNotFoundError` (also a `ValueError`) when the adapter is looked up, so it can be registered after the deployment is stored. Registering a built-in id replaces that adapter for **every** deployment using it: prefer a new id.
 
 ## Requirements
 

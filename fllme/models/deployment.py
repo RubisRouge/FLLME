@@ -1,6 +1,6 @@
 from enum import StrEnum
 
-from pydantic import BaseModel
+from pydantic import BaseModel, field_validator
 
 
 class AdapterType(StrEnum):
@@ -18,5 +18,17 @@ class Deployment(BaseModel):
     id: str
     url: str
     model_id: str
-    adapter: AdapterType
+    # A built-in AdapterType, or the id of an adapter added with register_adapter().
+    adapter: AdapterType | str
     auth_id: str
+
+    @field_validator("adapter", mode="before")
+    @classmethod
+    def _known_adapter_as_enum(cls, value: object) -> object:
+        # Keep built-in ids typed as AdapterType; leave custom ids as plain str.
+        if isinstance(value, str):
+            try:
+                return AdapterType(value)
+            except ValueError:
+                return value
+        return value

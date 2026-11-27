@@ -18,6 +18,10 @@ class DeploymentNotFoundError(FuncLLMError):
     pass
 
 
+class AdapterNotFoundError(FuncLLMError, ValueError):
+    pass
+
+
 class AuthError(FuncLLMError):
     pass
 
