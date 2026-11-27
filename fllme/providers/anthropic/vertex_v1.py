@@ -52,6 +52,26 @@ _THINKING_BUDGET: dict[ThinkingLevel, int] = {
     ThinkingLevel.HIGH: 32768,
 }
 
+# Anthropic rejects budget_tokens below 1024.
+_MIN_THINKING_BUDGET = 1024
+# Tokens kept for the visible answer: budget_tokens must stay below
+# max_tokens, and the answer comes out of what is left.
+_ANSWER_MARGIN = 1024
+
+
+def _effective_thinking_budget(level: ThinkingLevel, max_tokens: int) -> int:
+    budget = min(_THINKING_BUDGET[level], max_tokens - _ANSWER_MARGIN)
+    if budget < _MIN_THINKING_BUDGET:
+        min_max_tokens = _MIN_THINKING_BUDGET + _ANSWER_MARGIN
+        msg = (
+            f"thinking={level} requires max_tokens >= {min_max_tokens} "
+            f"(got {max_tokens}): budget_tokens must be at least "
+            f"{_MIN_THINKING_BUDGET} and below max_tokens, leaving "
+            f"{_ANSWER_MARGIN} tokens for the answer"
+        )
+        raise SerializationError(msg)
+    return budget
+
 
 @dataclasses.dataclass
 class _ToolInputAccumulator:
@@ -182,11 +202,12 @@ class AnthropicVertexV1:
             payload["stop_sequences"] = cfg.stop
 
         if cfg.thinking != ThinkingLevel.NO:
-            budget = _THINKING_BUDGET.get(cfg.thinking)
-            if budget is not None:
+            if cfg.thinking in _THINKING_BUDGET:
                 payload["thinking"] = {
                     "type": "enabled",
-                    "budget_tokens": budget,
+                    "budget_tokens": _effective_thinking_budget(
+                        cfg.thinking, cfg.max_tokens
+                    ),
                 }
             else:
                 payload["thinking"] = {"type": "adaptive"}
