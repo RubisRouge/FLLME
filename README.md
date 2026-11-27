@@ -283,6 +283,18 @@ Each provider/cloud/version combination has its own adapter implementing the `Ad
 
 Adapters are looked up via `get_adapter(adapter_type)`.
 
+## Provider errors
+
+A non-200 provider response raises `ProviderError`. Besides the raw `status_code` and `body` (and the unchanged `str(err)`), it carries a stable classification so callers do not have to parse the body:
+
+| Attribute | Meaning |
+|---|---|
+| `kind` | `ProviderErrorKind`: `invalid_request`, `authentication`, `permission`, `not_found`, `rate_limited`, `unavailable`, `policy`, `unknown` |
+| `retryable` | `True` for 429 and 5xx |
+| `provider_message` | Message extracted from the provider JSON (`error.message` for Anthropic / OpenAI / Azure / Vertex, `message` or `detail[].msg` for Mistral), `None` if the body is not JSON |
+
+`kind` comes from the HTTP status, refined by the body: the Google `status` field, and policy markers (GCP organization policy, content filters) classify a 400/403 as `policy`.
+
 ## Requirements
 
 - Python >= 3.11
