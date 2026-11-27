@@ -33,7 +33,7 @@ from ...models.message import (
     ToolResponseContent,
     UrlSource,
 )
-from ...models.model import LLMModel
+from ...models.model import LLMModel, ThinkingStyle
 from ...models.output import (
     FinishReason,
     GenerationOutput,
@@ -198,7 +198,11 @@ class OpenAIAzureV1:
         if cfg.candidates > 1:
             payload["n"] = cfg.candidates
 
-        if cfg.thinking != ThinkingLevel.NO:
+        # Models without a reasoning mode (e.g. GPT-4o) reject the field: skip it.
+        if (
+            cfg.thinking != ThinkingLevel.NO
+            and get_capabilities(model).thinking_style != ThinkingStyle.NONE
+        ):
             payload["reasoning_effort"] = _THINKING_MAP.get(cfg.thinking, "medium")
 
         if gen_input.tool_config and gen_input.tool_config.tools:

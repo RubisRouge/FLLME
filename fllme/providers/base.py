@@ -6,7 +6,7 @@ from typing import Any, Protocol, TypeGuard
 from pydantic import BaseModel, ValidationError
 
 from ..errors import StructuredOutputError
-from ..models.input import GenerationInput, OutputType
+from ..models.input import GenerationInput, OutputType, ThinkingLevel
 from ..models.message import Content, TextContent, ThinkingContent
 from ..models.model import LLMModel, ModelCapabilities
 from ..models.output import FinishReason, GenerationOutput, StreamDelta
@@ -29,6 +29,29 @@ class Adapter(Protocol):
 def get_capabilities(model: LLMModel | None) -> ModelCapabilities:
     """Capabilities of the resolved model; defaults when none was provided."""
     return model.capabilities if model is not None else ModelCapabilities()
+
+
+_THINKING_ORDER = [ThinkingLevel.LOW, ThinkingLevel.MEDIUM, ThinkingLevel.HIGH]
+
+
+def closest_thinking_level(
+    level: ThinkingLevel, accepted: list[ThinkingLevel] | None
+) -> ThinkingLevel:
+    """Requested level if accepted, else the closest accepted one (ties go higher).
+
+    ``accepted`` of ``None`` (or without any of low/medium/high) means no
+    restriction: the level is returned unchanged.
+    """
+    candidates = [lvl for lvl in _THINKING_ORDER if accepted and lvl in accepted]
+    if not candidates or level not in _THINKING_ORDER:
+        return level
+    wanted = _THINKING_ORDER.index(level)
+
+    def distance(lvl: ThinkingLevel) -> tuple[int, int]:
+        idx = _THINKING_ORDER.index(lvl)
+        return (abs(idx - wanted), -idx)
+
+    return min(candidates, key=distance)
 
 
 def accumulate_content(accumulated: list[Content], item: Content) -> None:

@@ -35,7 +35,7 @@ from fllme.models.output import (
     ThinkingDelta,
     StreamDelta,
 )
-from fllme.models.model import LLMModel, ModelCapabilities, Provider
+from fllme.models.model import LLMModel, ModelCapabilities, Provider, ThinkingStyle
 from fllme.providers.openai.azure_v1 import OpenAIAzureV1
 from fllme.providers.openai.azure_v2 import OpenAIAzureV2
 from fllme.providers.openai.azure_v3 import OpenAIAzureV3

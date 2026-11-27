@@ -14,7 +14,12 @@ from ...models.input import (
     ToolsCallingMode,
     WebSearchTool,
 )
-from ..base import accumulate_content, is_structured, parse_structured
+from ..base import (
+    accumulate_content,
+    get_capabilities,
+    is_structured,
+    parse_structured,
+)
 from ...errors import SerializationError
 from ...models.message import (
     Base64Source,
@@ -27,7 +32,7 @@ from ...models.message import (
     ToolResponseContent,
     UrlSource,
 )
-from ...models.model import LLMModel
+from ...models.model import LLMModel, ThinkingStyle
 from ...models.output import (
     FinishReason,
     GenerationOutput,
@@ -48,11 +53,28 @@ _TOOL_MODE_MAP: dict[ToolsCallingMode, str] = {
     ToolsCallingMode.NONE: "none",
 }
 
-_THINKING_MAP: dict[ThinkingLevel, str] = {
-    ThinkingLevel.LOW: "low",
-    ThinkingLevel.MEDIUM: "medium",
-    ThinkingLevel.HIGH: "high",
-}
+# The Mistral API only accepts reasoning_effort "none" or "high".
+_THINKING_ORDER: list[ThinkingLevel] = [
+    ThinkingLevel.LOW,
+    ThinkingLevel.MEDIUM,
+    ThinkingLevel.HIGH,
+]
+
+
+def _reasoning_effort(
+    level: ThinkingLevel, accepted: list[ThinkingLevel] | None
+) -> str:
+    """Closest accepted effort to the requested level (ties go higher)."""
+    candidates = [lvl for lvl in _THINKING_ORDER if accepted and lvl in accepted]
+    if not candidates:
+        return ThinkingLevel.HIGH.value
+    wanted = _THINKING_ORDER.index(level)
+
+    def distance(lvl: ThinkingLevel) -> tuple[int, int]:
+        idx = _THINKING_ORDER.index(lvl)
+        return (abs(idx - wanted), -idx)
+
+    return min(candidates, key=distance).value
 
 
 @dataclasses.dataclass
@@ -177,8 +199,16 @@ class MistralVertexV1:
         if cfg.candidates > 1:
             payload["n"] = cfg.candidates
 
-        if cfg.thinking != ThinkingLevel.NO:
-            payload["reasoning_effort"] = _THINKING_MAP.get(cfg.thinking, "medium")
+        caps = get_capabilities(model)
+        # Models without a reasoning mode reject the field; the others only
+        # accept "high" unless the capabilities list other accepted efforts.
+        if (
+            cfg.thinking != ThinkingLevel.NO
+            and caps.thinking_style != ThinkingStyle.NONE
+        ):
+            payload["reasoning_effort"] = _reasoning_effort(
+                cfg.thinking, caps.thinking_efforts
+            )
 
         if gen_input.tool_config and gen_input.tool_config.tools:
             tools: list[dict[str, Any]] = []
