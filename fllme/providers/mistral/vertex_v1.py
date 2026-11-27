@@ -16,6 +16,7 @@ from ...models.input import (
 )
 from ..base import (
     accumulate_content,
+    closest_thinking_level,
     get_capabilities,
     is_structured,
     parse_structured,
@@ -53,28 +54,15 @@ _TOOL_MODE_MAP: dict[ToolsCallingMode, str] = {
     ToolsCallingMode.NONE: "none",
 }
 
-# The Mistral API only accepts reasoning_effort "none" or "high".
-_THINKING_ORDER: list[ThinkingLevel] = [
-    ThinkingLevel.LOW,
-    ThinkingLevel.MEDIUM,
-    ThinkingLevel.HIGH,
-]
-
 
 def _reasoning_effort(
     level: ThinkingLevel, accepted: list[ThinkingLevel] | None
 ) -> str:
-    """Closest accepted effort to the requested level (ties go higher)."""
-    candidates = [lvl for lvl in _THINKING_ORDER if accepted and lvl in accepted]
-    if not candidates:
+    # The Mistral API only accepts reasoning_effort "none" or "high": without a
+    # list of accepted efforts, every level is sent as "high".
+    if not accepted:
         return ThinkingLevel.HIGH.value
-    wanted = _THINKING_ORDER.index(level)
-
-    def distance(lvl: ThinkingLevel) -> tuple[int, int]:
-        idx = _THINKING_ORDER.index(lvl)
-        return (abs(idx - wanted), -idx)
-
-    return min(candidates, key=distance).value
+    return closest_thinking_level(level, accepted).value
 
 
 @dataclasses.dataclass
