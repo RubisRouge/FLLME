@@ -14,7 +14,12 @@ from ...models.input import (
     ToolsCallingMode,
     WebSearchTool,
 )
-from ..base import accumulate_content, is_structured, parse_structured
+from ..base import (
+    accumulate_content,
+    get_capabilities,
+    is_structured,
+    parse_structured,
+)
 from ...errors import SerializationError
 from ...models.message import (
     Base64Source,
@@ -220,7 +225,9 @@ class OpenAIAzureV1:
                         )
                         raise SerializationError(error_msg)
             payload["tools"] = tools
-            payload["parallel_tool_calls"] = gen_input.tool_config.parallel_calling
+            # Some models (e.g. o4-mini) reject the field even when it is false.
+            if get_capabilities(model).supports_parallel_tool_calls:
+                payload["parallel_tool_calls"] = gen_input.tool_config.parallel_calling
             payload["tool_choice"] = _TOOL_MODE_MAP[gen_input.tool_config.mode]
 
         output_type = gen_input.output_type
