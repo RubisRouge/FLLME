@@ -129,6 +129,8 @@ LLMModel(
 | `supports_parallel_tool_calls` | `True` | Whether `parallel_tool_calls` may be sent |
 | `search_with_function_tools` | `True` | Whether web search and function tools can share a request |
 
+`thinking_style=none` models (e.g. GPT-4o, Mistral Medium 3) have no reasoning mode: the OpenAI and Mistral adapters silently drop `reasoning_effort` instead of sending a field the provider rejects. Callers who prefer an error should validate the model's capabilities upstream. The Mistral API only accepts `reasoning_effort` `high`, so any requested level is sent as `high` unless `thinking_efforts` lists the accepted levels, in which case the closest one is used.
+
 The defaults reproduce the behaviour from before capabilities existed: a model registered without capabilities is serialized exactly as it used to be. Re-register a model with `add_model` to update its capabilities.
 
 ### Deployment
