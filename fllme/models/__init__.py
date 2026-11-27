@@ -33,7 +33,7 @@ from .input import (
 )
 from .auth import AuthPrinciple
 from .deployment import AdapterType, Deployment
-from .model import LLMModel, Provider
+from .model import LLMModel, ModelCapabilities, Provider, ThinkingStyle
 from .output import (
     CacheUsage,
     Citation,
@@ -75,6 +75,7 @@ __all__ = [
     "Message",
     "MessageSource",
     "MimeType",
+    "ModelCapabilities",
     "OutputType",
     "PersonGeneration",
     "Provider",
@@ -92,6 +93,7 @@ __all__ = [
     "ThinkingContent",
     "ThinkingDelta",
     "ThinkingLevel",
+    "ThinkingStyle",
     "Tool",
     "ToolCallContent",
     "ToolDefinition",

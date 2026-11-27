@@ -3,7 +3,7 @@ from pydantic import ValidationError
 
 from fllme.models.auth import BUILTIN_PRINCIPLES, AuthPrinciple
 from fllme.models.deployment import AdapterType, Deployment
-from fllme.models.model import LLMModel, Provider
+from fllme.models.model import LLMModel, ModelCapabilities, Provider, ThinkingStyle
 
 
 class TestLLMModel:
@@ -24,8 +24,19 @@ class TestLLMModel:
     def test_serialization(self) -> None:
         model = LLMModel(id="test", name="Test", provider=Provider.GEMINI)
         data = model.model_dump()
-        assert data == {"id": "test", "name": "Test", "provider": "gemini"}
+        assert data["id"] == "test"
+        assert data["provider"] == "gemini"
         assert LLMModel.model_validate(data) == model
+
+    def test_default_capabilities_keep_current_behaviour(self) -> None:
+        caps = LLMModel(id="t", name="T", provider=Provider.GEMINI).capabilities
+        assert caps == ModelCapabilities()
+        assert caps.thinking_style == ThinkingStyle.BUDGET
+        assert caps.thinking_budget_min is None
+        assert caps.thinking_budget_max is None
+        assert caps.thinking_efforts is None
+        assert caps.supports_parallel_tool_calls is True
+        assert caps.search_with_function_tools is True
 
 
 class TestAdapterType:

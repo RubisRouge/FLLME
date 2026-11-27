@@ -28,6 +28,7 @@ from ...models.message import (
     WebSearchQueryContent,
     UrlSource,
 )
+from ...models.model import LLMModel
 from ...models.output import (
     Citation,
     CitationType,
@@ -84,7 +85,11 @@ _TOOL_MODE_MAP: dict[ToolsCallingMode, str] = {
 
 
 class GeminiVertexV1:
-    def serialize(self, gen_input: GenerationInput) -> dict[str, Any]:
+    def serialize(
+        self,
+        gen_input: GenerationInput,
+        model: LLMModel | None = None,
+    ) -> dict[str, Any]:
         payload: dict[str, Any] = {}
 
         tool_name_map = _build_tool_name_map(gen_input.conversation)

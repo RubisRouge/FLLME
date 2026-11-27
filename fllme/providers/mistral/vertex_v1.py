@@ -27,6 +27,7 @@ from ...models.message import (
     ToolResponseContent,
     UrlSource,
 )
+from ...models.model import LLMModel
 from ...models.output import (
     FinishReason,
     GenerationOutput,
@@ -127,7 +128,11 @@ def _serialize_model_messages(msg: Message) -> list[dict[str, Any]]:
 
 
 class MistralVertexV1:
-    def serialize(self, gen_input: GenerationInput) -> dict[str, Any]:
+    def serialize(
+        self,
+        gen_input: GenerationInput,
+        model: LLMModel | None = None,
+    ) -> dict[str, Any]:
         payload: dict[str, Any] = {"model": gen_input.model}
 
         messages: list[dict[str, Any]] = []

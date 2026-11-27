@@ -43,7 +43,8 @@ async def generate(
 
     deployment = await svc.resolve_deployment(gen_input.model, deployment_id)
     adapter = get_adapter(deployment.adapter)
-    payload: dict[str, Any] = adapter.serialize(gen_input)
+    model = await svc.get_model(deployment.model_id)
+    payload: dict[str, Any] = adapter.serialize(gen_input, model)
     headers = await svc.get_auth_headers(deployment)
     output_type = gen_input.output_type
 

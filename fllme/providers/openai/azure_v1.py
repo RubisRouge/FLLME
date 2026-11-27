@@ -28,6 +28,7 @@ from ...models.message import (
     ToolResponseContent,
     UrlSource,
 )
+from ...models.model import LLMModel
 from ...models.output import (
     FinishReason,
     GenerationOutput,
@@ -143,7 +144,11 @@ def _strict_schema(node: Any) -> Any:
 
 
 class OpenAIAzureV1:
-    def serialize(self, gen_input: GenerationInput) -> dict[str, Any]:
+    def serialize(
+        self,
+        gen_input: GenerationInput,
+        model: LLMModel | None = None,
+    ) -> dict[str, Any]:
         payload: dict[str, Any] = {}
 
         messages: list[dict[str, Any]] = []
